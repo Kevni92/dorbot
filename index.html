@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#050b16" />
+    <title>Dorbot Prototype</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game"></div>
+      <div id="hud" aria-label="Spieloberfläche">
+        <div class="topbar glass">
+          <div class="brand">DORBOT // SECTOR 01</div>
+          <div id="coordinates">X 0000 · Y 0000</div>
+          <button id="fullscreenButton" class="icon-button" type="button">⛶</button>
+        </div>
+
+        <div class="status-panel glass">
+          <div class="meter-row"><span>HP</span><div class="meter"><i id="hpBar"></i></div><strong id="hpText">100 / 100</strong></div>
+          <div class="meter-row"><span>SHD</span><div class="meter shield"><i id="shieldBar"></i></div><strong id="shieldText">100 / 100</strong></div>
+          <div id="shieldCooldown" class="cooldown hidden">Schild lädt: 30s</div>
+          <div class="stats-line"><span id="credits">₡ 1.500</span><span id="cargo">Cargo 0 / 100</span></div>
+        </div>
+
+        <div id="targetPanel" class="target-panel glass hidden">
+          <small>ZIEL</small>
+          <strong id="targetName">–</strong>
+          <span id="targetStats">–</span>
+        </div>
+
+        <button id="dockButton" class="dock-button hidden" type="button">ANDOCKEN</button>
+
+        <div class="actionbar glass">
+          <button id="laserButton" class="action-button" type="button"><b>LASER</b><span>Tippen: Feuer<br>Halten: Auto</span></button>
+          <button id="rocketButton" class="action-button" type="button"><b>RAKETE</b><span>Tippen: Feuer<br>Halten: Auto</span></button>
+        </div>
+
+        <div id="stationPanel" class="modal-backdrop hidden">
+          <section class="station-window glass">
+            <header><div><small>ORBITAL HUB</small><h2>STATION AEGIS</h2></div><button id="closeStationButton" class="icon-button" type="button">×</button></header>
+            <nav class="tabs">
+              <button class="tab active" data-tab="market" type="button">Markt</button>
+              <button class="tab" data-tab="shipyard" type="button">Werft</button>
+              <button class="tab" data-tab="equipment" type="button">Ausrüstung</button>
+            </nav>
+            <div id="tab-market" class="tab-content active">
+              <p>Verkaufe geborgene Erze an die Station.</p>
+              <div class="shop-row"><span id="marketCargo">0 Erz</span><button id="sellCargoButton" type="button">Alles verkaufen</button></div>
+            </div>
+            <div id="tab-shipyard" class="tab-content">
+              <div class="shop-grid">
+                <button class="shop-card" data-ship="scout" type="button"><b>Scout</b><span>Tempo 420 · Cargo 70</span><em>₡ 900</em></button>
+                <button class="shop-card" data-ship="hunter" type="button"><b>Hunter</b><span>HP 140 · Schild 130</span><em>₡ 1.800</em></button>
+                <button class="shop-card" data-ship="hauler" type="button"><b>Hauler</b><span>Cargo 180 · HP 170</span><em>₡ 2.400</em></button>
+              </div>
+            </div>
+            <div id="tab-equipment" class="tab-content">
+              <div class="shop-grid">
+                <button class="shop-card" data-upgrade="shield2" type="button"><b>Schild Mk II</b><span>+60 Schild</span><em>₡ 700</em></button>
+                <button class="shop-card" data-upgrade="laser2" type="button"><b>Pulslaser II</b><span>+8 Laserschaden</span><em>₡ 650</em></button>
+                <button class="shop-card" data-upgrade="rocket2" type="button"><b>Raketenwerfer II</b><span>+16 Raketenschaden</span><em>₡ 850</em></button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="toast" class="toast hidden"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
