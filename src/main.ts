@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './styles.css';
+import { AssetPreloadScene } from './game/AssetPreloadScene';
 import { GameScene } from './game/GameScene';
 
 const game = new Phaser.Game({
@@ -26,7 +27,7 @@ const game = new Phaser.Game({
   input: {
     activePointers: 4,
   },
-  scene: [GameScene],
+  scene: [AssetPreloadScene, GameScene],
 });
 
 window.addEventListener('resize', () => game.scale.resize(window.innerWidth, window.innerHeight));

@@ -1,36 +1,44 @@
 export function createProceduralAssets(scene: any): void {
-  makeShip(scene, 'ship-player', 0x61e7ff, 0xffffff);
-  makeShip(scene, 'ship-pirate', 0xff4f70, 0xffb0bd);
+  if (!scene.textures.exists('ship-player')) makeShip(scene, 'ship-player', 0x61e7ff, 0xffffff);
+  if (!scene.textures.exists('ship-pirate')) makeShip(scene, 'ship-pirate', 0xff4f70, 0xffb0bd);
 
-  const asteroid = scene.make.graphics({ x: 0, y: 0, add: false });
-  asteroid.fillStyle(0x39465a, 1);
-  asteroid.lineStyle(3, 0x6e8098, 1);
-  asteroid.beginPath();
-  asteroid.moveTo(7, 22); asteroid.lineTo(16, 5); asteroid.lineTo(39, 2); asteroid.lineTo(58, 14);
-  asteroid.lineTo(61, 38); asteroid.lineTo(48, 57); asteroid.lineTo(24, 61); asteroid.lineTo(5, 47); asteroid.closePath();
-  asteroid.fillPath(); asteroid.strokePath();
-  asteroid.fillStyle(0x242e40, 0.8); asteroid.fillCircle(22, 24, 7); asteroid.fillCircle(45, 40, 9); asteroid.fillCircle(40, 14, 4);
-  asteroid.generateTexture('asteroid', 66, 66); asteroid.destroy();
+  if (!scene.textures.exists('asteroid')) {
+    const asteroid = scene.make.graphics({ x: 0, y: 0, add: false });
+    asteroid.fillStyle(0x39465a, 1);
+    asteroid.lineStyle(3, 0x6e8098, 1);
+    asteroid.beginPath();
+    asteroid.moveTo(7, 22); asteroid.lineTo(16, 5); asteroid.lineTo(39, 2); asteroid.lineTo(58, 14);
+    asteroid.lineTo(61, 38); asteroid.lineTo(48, 57); asteroid.lineTo(24, 61); asteroid.lineTo(5, 47); asteroid.closePath();
+    asteroid.fillPath(); asteroid.strokePath();
+    asteroid.fillStyle(0x242e40, 0.8); asteroid.fillCircle(22, 24, 7); asteroid.fillCircle(45, 40, 9); asteroid.fillCircle(40, 14, 4);
+    asteroid.generateTexture('asteroid', 66, 66); asteroid.destroy();
+  }
 
-  const ore = scene.make.graphics({ x: 0, y: 0, add: false });
-  ore.fillStyle(0x3cf4c5, 0.18); ore.fillCircle(18, 18, 17);
-  ore.fillStyle(0x60ffd9, 1); ore.fillTriangle(18, 3, 31, 23, 10, 32);
-  ore.lineStyle(2, 0xc8fff0, 1); ore.strokeTriangle(18, 3, 31, 23, 10, 32);
-  ore.generateTexture('ore', 36, 36); ore.destroy();
+  if (!scene.textures.exists('ore')) {
+    const ore = scene.make.graphics({ x: 0, y: 0, add: false });
+    ore.fillStyle(0x3cf4c5, 0.18); ore.fillCircle(18, 18, 17);
+    ore.fillStyle(0x60ffd9, 1); ore.fillTriangle(18, 3, 31, 23, 10, 32);
+    ore.lineStyle(2, 0xc8fff0, 1); ore.strokeTriangle(18, 3, 31, 23, 10, 32);
+    ore.generateTexture('ore', 36, 36); ore.destroy();
+  }
 
-  const cargo = scene.make.graphics({ x: 0, y: 0, add: false });
-  cargo.fillStyle(0xffb84f, 0.16); cargo.fillCircle(22, 22, 21);
-  cargo.fillStyle(0x283346, 1); cargo.lineStyle(3, 0xffc665, 1); cargo.fillRoundedRect(7, 9, 30, 27, 5); cargo.strokeRoundedRect(7, 9, 30, 27, 5);
-  cargo.lineBetween(12, 20, 32, 20);
-  cargo.generateTexture('cargo', 44, 44); cargo.destroy();
+  if (!scene.textures.exists('cargo')) {
+    const cargo = scene.make.graphics({ x: 0, y: 0, add: false });
+    cargo.fillStyle(0xffb84f, 0.16); cargo.fillCircle(22, 22, 21);
+    cargo.fillStyle(0x283346, 1); cargo.lineStyle(3, 0xffc665, 1); cargo.fillRoundedRect(7, 9, 30, 27, 5); cargo.strokeRoundedRect(7, 9, 30, 27, 5);
+    cargo.lineBetween(12, 20, 32, 20);
+    cargo.generateTexture('cargo', 44, 44); cargo.destroy();
+  }
 
-  const rocket = scene.make.graphics({ x: 0, y: 0, add: false });
-  rocket.fillStyle(0xffd46a, 1); rocket.fillTriangle(12, 0, 20, 22, 4, 22); rocket.fillStyle(0xff5d4a, 1); rocket.fillTriangle(12, 30, 18, 20, 6, 20);
-  rocket.generateTexture('rocket', 24, 32); rocket.destroy();
+  if (!scene.textures.exists('rocket')) {
+    const rocket = scene.make.graphics({ x: 0, y: 0, add: false });
+    rocket.fillStyle(0xffd46a, 1); rocket.fillTriangle(12, 0, 20, 22, 4, 22); rocket.fillStyle(0xff5d4a, 1); rocket.fillTriangle(12, 30, 18, 20, 6, 20);
+    rocket.generateTexture('rocket', 24, 32); rocket.destroy();
+  }
 
-  makeStation(scene);
-  makeStars(scene, 'stars-far', 0x566f9a, 55, 0.35);
-  makeStars(scene, 'stars-near', 0xe1f3ff, 28, 0.9);
+  if (!scene.textures.exists('station')) makeStation(scene);
+  if (!scene.textures.exists('stars-far')) makeStars(scene, 'stars-far', 0x566f9a, 55, 0.35);
+  if (!scene.textures.exists('stars-near')) makeStars(scene, 'stars-near', 0xe1f3ff, 28, 0.9);
 }
 
 function makeShip(scene: any, key: string, primary: number, accent: number): void {
