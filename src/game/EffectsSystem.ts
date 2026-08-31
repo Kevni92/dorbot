@@ -1,9 +1,13 @@
 import Phaser from 'phaser';
+import type { VisualQuality } from './AdaptiveQualityController';
 
 export class EffectsSystem {
   private readonly lastThrusterAt = new WeakMap<object, number>();
+  private quality: VisualQuality = 'high';
 
   constructor(private readonly scene: Phaser.Scene) {}
+
+  setQuality(quality: VisualQuality): void { this.quality = quality; }
 
   updateThruster(source: any, time: number, color = 0x55ddff, intensity = 1): void {
     if (!source?.active || !source?.visible) return;
@@ -12,7 +16,8 @@ export class EffectsSystem {
     if (speed < 20) return;
 
     const previous = this.lastThrusterAt.get(source) ?? 0;
-    const delay = intensity >= 0.8 ? 48 : 72;
+    const baseDelay = intensity >= 0.8 ? 48 : 72;
+    const delay = baseDelay * this.qualityMultiplier(1, 1.45, 2.15);
     if (time - previous < delay) return;
     this.lastThrusterAt.set(source, time);
 
@@ -40,7 +45,7 @@ export class EffectsSystem {
 
   beam(x1: number, y1: number, x2: number, y2: number, color: number): void {
     const beam = this.scene.add.graphics().setDepth(30).setBlendMode(Phaser.BlendModes.ADD);
-    beam.lineStyle(16, color, 0.08); beam.lineBetween(x1, y1, x2, y2);
+    if (this.quality !== 'low') { beam.lineStyle(16, color, 0.08); beam.lineBetween(x1, y1, x2, y2); }
     beam.lineStyle(8, color, 0.16); beam.lineBetween(x1, y1, x2, y2);
     beam.lineStyle(3, color, 0.95); beam.lineBetween(x1, y1, x2, y2);
     beam.lineStyle(1, 0xffffff, 1); beam.lineBetween(x1, y1, x2, y2);
@@ -55,12 +60,15 @@ export class EffectsSystem {
       .setStrokeStyle(4, color, 0.8)
       .setDepth(29)
       .setBlendMode(Phaser.BlendModes.ADD);
-    const inner = this.scene.add.circle(source.x, source.y, radius * 0.82, 0xffffff, 0)
-      .setStrokeStyle(1.5, 0xffffff, 0.72)
-      .setDepth(30)
-      .setBlendMode(Phaser.BlendModes.ADD);
     this.scene.tweens.add({ targets: halo, scale: 1.28, alpha: 0, duration: 230, ease: 'Cubic.out', onComplete: () => halo.destroy() });
-    this.scene.tweens.add({ targets: inner, scale: 1.15, alpha: 0, duration: 150, ease: 'Quad.out', onComplete: () => inner.destroy() });
+
+    if (this.quality !== 'low') {
+      const inner = this.scene.add.circle(source.x, source.y, radius * 0.82, 0xffffff, 0)
+        .setStrokeStyle(1.5, 0xffffff, 0.72)
+        .setDepth(30)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({ targets: inner, scale: 1.15, alpha: 0, duration: 150, ease: 'Quad.out', onComplete: () => inner.destroy() });
+    }
   }
 
   impact(x: number, y: number, color: number, scale = 1): void {
@@ -74,7 +82,8 @@ export class EffectsSystem {
     this.scene.tweens.add({ targets: flash, alpha: 0, scale: 2.2, duration: 110, onComplete: () => flash.destroy() });
     this.scene.tweens.add({ targets: ring, radius: 28 * scale, alpha: 0, duration: 210, ease: 'Cubic.out', onComplete: () => ring.destroy() });
 
-    for (let i = 0; i < 5; i += 1) {
+    const sparkCount = Math.round(this.qualityMultiplier(5, 3, 2));
+    for (let i = 0; i < sparkCount; i += 1) {
       const spark = this.scene.add.circle(x, y, 1.4 + Math.random() * 1.8, i % 2 ? color : 0xffffff, 0.9)
         .setDepth(32)
         .setBlendMode(Phaser.BlendModes.ADD);
@@ -85,9 +94,10 @@ export class EffectsSystem {
   }
 
   startMissileTrail(projectile: any, color: number, lifetime: number): void {
-    const repeats = Math.max(2, Math.ceil(lifetime / 38));
+    const delay = Math.round(this.qualityMultiplier(38, 55, 78));
+    const repeats = Math.max(2, Math.ceil(lifetime / delay));
     this.scene.time.addEvent({
-      delay: 38,
+      delay,
       repeat: repeats,
       callback: () => {
         if (!projectile?.active) return;
@@ -97,11 +107,14 @@ export class EffectsSystem {
         const puff = this.scene.add.circle(tailX, tailY, 4 + Math.random() * 3, color, 0.35)
           .setDepth(27)
           .setBlendMode(Phaser.BlendModes.ADD);
-        const flame = this.scene.add.circle(tailX, tailY, 1.8 + Math.random(), 0xffffff, 0.78)
-          .setDepth(28)
-          .setBlendMode(Phaser.BlendModes.ADD);
         this.scene.tweens.add({ targets: puff, alpha: 0, scale: 0.25, duration: 240, onComplete: () => puff.destroy() });
-        this.scene.tweens.add({ targets: flame, alpha: 0, scale: 0.1, duration: 120, onComplete: () => flame.destroy() });
+
+        if (this.quality !== 'low') {
+          const flame = this.scene.add.circle(tailX, tailY, 1.8 + Math.random(), 0xffffff, 0.78)
+            .setDepth(28)
+            .setBlendMode(Phaser.BlendModes.ADD);
+          this.scene.tweens.add({ targets: flame, alpha: 0, scale: 0.1, duration: 120, onComplete: () => flame.destroy() });
+        }
       },
     });
   }
@@ -122,7 +135,8 @@ export class EffectsSystem {
     this.scene.tweens.add({ targets: core, scale: 2.2, alpha: 0, duration: 360, ease: 'Quad.out', onComplete: () => core.destroy() });
     this.scene.tweens.add({ targets: shockwave, radius: 130 * scale, alpha: 0, duration: 520, ease: 'Cubic.out', onComplete: () => shockwave.destroy() });
 
-    const particleCount = Math.max(12, Math.round(18 * scale));
+    const particleBase = this.qualityMultiplier(18, 12, 7);
+    const particleCount = Math.max(this.quality === 'low' ? 6 : 9, Math.round(particleBase * scale));
     for (let i = 0; i < particleCount; i += 1) {
       const hot = i % 3 !== 0;
       const particle = this.scene.add.circle(x, y, 2 + Math.random() * 5, hot ? color : 0xffffff, 0.92)
@@ -141,5 +155,11 @@ export class EffectsSystem {
         onComplete: () => particle.destroy(),
       });
     }
+  }
+
+  private qualityMultiplier(high: number, medium: number, low: number): number {
+    if (this.quality === 'high') return high;
+    if (this.quality === 'medium') return medium;
+    return low;
   }
 }
