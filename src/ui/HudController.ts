@@ -30,6 +30,11 @@ export class HudController {
     this.el('sellCargoButton').addEventListener('click', callbacks.onSellCargo);
     this.el('closeStationButton').addEventListener('click', () => this.showStation(false));
     this.el('fullscreenButton').addEventListener('click', () => this.toggleFullscreen());
+    this.el('launchFullscreenButton').addEventListener('click', async () => {
+      await this.enterFullscreen();
+      this.dismissLaunch();
+    });
+    this.el('launchBrowserButton').addEventListener('click', () => this.dismissLaunch());
     document.addEventListener('fullscreenchange', () => this.refreshFullscreenButton());
 
     document.querySelectorAll<HTMLElement>('[data-ship]').forEach((button) => button.addEventListener('click', () => callbacks.onBuyShip(button.dataset.ship ?? '')));
@@ -44,6 +49,7 @@ export class HudController {
     });
     document.querySelectorAll<HTMLElement>('.tab').forEach((button) => button.addEventListener('click', () => this.switchTab(button.dataset.tab ?? 'market')));
 
+    if (this.isInstalledDisplayMode()) this.dismissLaunch();
     this.refreshAutoButtons();
     this.refreshFullscreenButton();
   }
@@ -127,17 +133,36 @@ export class HudController {
   }
 
   private async toggleFullscreen(): Promise<void> {
+    if (!document.fullscreenElement) {
+      await this.enterFullscreen();
+      return;
+    }
+
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        try { await (screen.orientation as any)?.lock?.('landscape'); } catch { /* browser may disallow orientation lock */ }
-      } else {
-        try { (screen.orientation as any)?.unlock?.(); } catch { /* optional API */ }
-        await document.exitFullscreen();
-      }
+      try { (screen.orientation as any)?.unlock?.(); } catch { /* optional API */ }
+      await document.exitFullscreen();
+    } catch {
+      this.toast('Fullscreen konnte nicht beendet werden.');
+    }
+  }
+
+  private async enterFullscreen(): Promise<void> {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      try { await (screen.orientation as any)?.lock?.('landscape'); } catch { /* browser may disallow orientation lock */ }
     } catch {
       this.toast('Fullscreen wird von diesem Browser nicht unterstützt.');
     }
+  }
+
+  private dismissLaunch(): void {
+    this.el('launchOverlay').classList.add('hidden');
+  }
+
+  private isInstalledDisplayMode(): boolean {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: fullscreen)').matches
+      || Boolean((navigator as any).standalone);
   }
 
   private refreshFullscreenButton(): void {
