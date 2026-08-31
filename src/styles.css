@@ -40,18 +40,34 @@ button { font: inherit; color: inherit; }
 @keyframes weaponPulse { 0%,100% { opacity: .82; } 50% { opacity: 1; } }
 .dock-button { pointer-events: auto; position: absolute; left: 50%; bottom: 98px; transform: translateX(-50%); padding: 10px 24px; border: 1px solid #67ecff; background: rgba(12,48,67,.9); color: #c8faff; box-shadow: 0 0 20px rgba(71,222,255,.18); border-radius: 6px; font-weight: 800; letter-spacing: .13em; font-size: 11px; }
 .modal-backdrop { pointer-events: auto; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(1,4,10,.62); padding: 16px; }
-.station-window { width: min(720px, 100%); max-height: min(590px, 86vh); overflow: auto; padding: 16px; border-radius: 10px; }
+.station-window { width: min(880px, 100%); max-height: min(650px, 88vh); overflow: auto; padding: 16px; border-radius: 10px; }
 .station-window header { display: flex; justify-content: space-between; align-items: start; }.station-window small { color: #5fe9ff; letter-spacing: .15em; }.station-window h2 { margin: 3px 0 8px; font-size: 20px; }
 .tabs { display: flex; gap: 5px; border-bottom: 1px solid rgba(92,221,255,.16); margin-bottom: 14px; }.tab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 9px 12px; color: #7f9aad; }.tab.active { color: #75efff; border-color: #62e8ff; }
 .tab-content { display: none; }.tab-content.active { display: block; }.tab-content p { color: #93a9b9; font-size: 13px; }
 .shop-row { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(255,255,255,.035); }.shop-row button, .shop-card { border: 1px solid rgba(94,231,255,.2); background: rgba(30,70,91,.35); border-radius: 6px; padding: 9px 12px; cursor: pointer; }
 .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }.shop-card { min-height: 100px; text-align: left; display: grid; gap: 4px; }.shop-card b { color: #cbf8ff; }.shop-card span { color: #809aae; font-size: 10px; }.shop-card em { color: #63eaff; font-style: normal; }
+.equipment-layout { display: grid; grid-template-columns: minmax(235px, .8fr) minmax(0, 1.4fr); gap: 12px; }
+.equipment-owned, .equipment-store { border: 1px solid rgba(96,232,255,.13); background: rgba(1,10,20,.28); border-radius: 7px; padding: 11px; }
+.section-title { display: flex; justify-content: space-between; gap: 10px; align-items: end; margin-bottom: 9px; }
+.section-title > div { display: grid; gap: 2px; }.section-title small { font-size: 8px; }.section-title strong { font-size: 12px; }.section-title > span { color: #7beaff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
+.slot-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 9px; }
+.slot-chip { border: 1px solid rgba(111,220,255,.18); background: rgba(55,130,168,.08); padding: 6px; display: grid; gap: 2px; color: #9cb6c7; font-size: 9px; border-radius: 4px; text-align: center; }
+.slot-chip b { color: #6cecff; font-size: 7px; letter-spacing: .08em; }.slot-chip.rocket b { color: #ffd37b; }.slot-chip.shield b { color: #79aaff; }
+.owned-modules { display: grid; gap: 5px; }
+.owned-module { width: 100%; min-height: 48px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; border: 1px solid rgba(110,155,182,.15); background: rgba(20,36,52,.55); border-radius: 5px; padding: 7px 8px; cursor: pointer; }
+.owned-module > span { display: grid; gap: 2px; }.owned-module b { font-size: 10px; color: #b9d5e3; }.owned-module small { font-size: 8px; color: #71899a; }.owned-module em { font-style: normal; font-size: 7px; color: #7890a0; letter-spacing: .08em; }
+.owned-module.equipped { border-color: rgba(83,255,198,.38); background: rgba(27,90,74,.23); box-shadow: inset 0 0 12px rgba(60,255,194,.05); }.owned-module.equipped b, .owned-module.equipped em { color: #75ffd1; }
+.module-shop-grid { grid-template-columns: repeat(3, 1fr); }.module-card { min-height: 78px; position: relative; }.module-card::before { content: ''; width: 4px; position: absolute; left: 0; top: 8px; bottom: 8px; border-radius: 0 3px 3px 0; background: #57eaff; opacity: .65; }.module-card.rocket-module::before { background: #ffc85f; }.module-card.shield-module::before { background: #708dff; }
 .toast { position: absolute; left: 50%; top: 130px; transform: translateX(-50%); background: rgba(5,18,31,.92); border: 1px solid rgba(91,232,255,.35); color: #c8f8ff; padding: 8px 14px; font-size: 11px; border-radius: 5px; box-shadow: 0 0 18px rgba(42,205,255,.14); }
 .hidden { display: none !important; }
 @media (max-width: 680px) {
   .brand { display: none; }.topbar { grid-template-columns: 1fr 38px; min-width: 190px; left: auto; right: max(10px, env(safe-area-inset-right)); transform: none; }
   .status-panel { top: 62px; width: 225px; }.target-panel { top: 150px; width: 165px; }.shop-grid { grid-template-columns: 1fr; }
-  .station-window { max-height: 78vh; }.action-button { width: 128px; height: 60px; grid-template-columns: 40px 1fr; gap: 6px; padding-left: 6px; }.weapon-icon-wrap { width: 39px; height: 42px; }.weapon-icon { width: 28px; height: 28px; }.action-copy b { font-size: 10px; }.action-copy small { font-size: 7px; }.toast { top: auto; bottom: 96px; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+  .equipment-layout { grid-template-columns: 1fr; }.module-shop-grid { grid-template-columns: repeat(2, 1fr); }.station-window { max-height: 78vh; }
+  .action-button { width: 128px; height: 60px; grid-template-columns: 40px 1fr; gap: 6px; padding-left: 6px; }.weapon-icon-wrap { width: 39px; height: 42px; }.weapon-icon { width: 28px; height: 28px; }.action-copy b { font-size: 10px; }.action-copy small { font-size: 7px; }.toast { top: auto; bottom: 96px; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 460px) {
+  .module-shop-grid { grid-template-columns: 1fr; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .topbar { top: max(5px, env(safe-area-inset-top)); height: 36px; }
