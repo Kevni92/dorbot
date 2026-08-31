@@ -13,7 +13,7 @@
         <div class="topbar glass">
           <div class="brand">DORBOT // SECTOR 01</div>
           <div id="coordinates">X 0000 · Y 0000</div>
-          <button id="fullscreenButton" class="icon-button" type="button">⛶</button>
+          <button id="fullscreenButton" class="icon-button" type="button" aria-label="Vollbild umschalten" title="Vollbild">⛶</button>
         </div>
 
         <div class="status-panel glass">
@@ -31,9 +31,27 @@
 
         <button id="dockButton" class="dock-button hidden" type="button">ANDOCKEN</button>
 
-        <div class="actionbar glass">
-          <button id="laserButton" class="action-button" type="button"><b>LASER</b><span>Tippen: Feuer<br>Halten: Auto</span></button>
-          <button id="rocketButton" class="action-button" type="button"><b>RAKETE</b><span>Tippen: Feuer<br>Halten: Auto</span></button>
+        <div class="actionbar glass" aria-label="Waffensysteme">
+          <button id="laserButton" class="action-button laser-action" type="button" aria-label="Laser feuern. Gedrückt halten für Automatik." aria-pressed="false">
+            <span class="weapon-icon-wrap" aria-hidden="true">
+              <svg class="weapon-icon" viewBox="0 0 36 36" role="img">
+                <path class="icon-glow" d="M4 18h28" />
+                <path d="M3 18h20M25 18h8M22 13l5 5-5 5" />
+              </svg>
+            </span>
+            <span class="action-copy"><b>LASER</b><small>Tippen · Feuer<br>Halten · Auto</small></span>
+            <span class="auto-chip" aria-hidden="true">AUTO</span>
+          </button>
+          <button id="rocketButton" class="action-button rocket-action" type="button" aria-label="Rakete abfeuern. Gedrückt halten für Automatik." aria-pressed="false">
+            <span class="weapon-icon-wrap" aria-hidden="true">
+              <svg class="weapon-icon" viewBox="0 0 36 36" role="img">
+                <path class="icon-glow" d="M18 4c6 4 9 10 8 19l-8 8-8-8c-1-9 2-15 8-19Z" />
+                <path d="M18 4c6 4 9 10 8 19l-8 8-8-8c-1-9 2-15 8-19ZM12 22l-5 5M24 22l5 5M18 12v9" />
+              </svg>
+            </span>
+            <span class="action-copy"><b>RAKETE</b><small>Tippen · Feuer<br>Halten · Auto</small></span>
+            <span class="auto-chip" aria-hidden="true">AUTO</span>
+          </button>
         </div>
 
         <div id="stationPanel" class="modal-backdrop hidden">
