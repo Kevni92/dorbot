@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { createProceduralAssets } from './ProceduralAssets';
 import { AdaptiveQualityController } from './AdaptiveQualityController';
 import { EffectsSystem } from './EffectsSystem';
+import { createWorldDecorations } from './WorldDecorationSystem';
 import { MODULE_CATALOG } from './equipment';
 import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
 import { HudController } from '../ui/HudController';
@@ -60,6 +61,7 @@ export class GameScene extends Phaser.Scene {
 
     this.createBackground();
     this.createGrid();
+    createWorldDecorations(this);
     this.station = this.add.image(STATION_X, STATION_Y, 'station').setDepth(4).setScale(1.25);
     this.add.text(STATION_X, STATION_Y + 310, 'STATION AEGIS // SAFE ZONE', { fontFamily: 'monospace', fontSize: '18px', color: '#64eaff' }).setOrigin(0.5).setAlpha(0.8).setDepth(5);
 
