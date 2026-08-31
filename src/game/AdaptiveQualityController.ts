@@ -4,6 +4,7 @@ export type { VisualQuality, VisualQualityMode } from './VisualQualitySettings';
 export class AdaptiveQualityController {
   private smoothedFrameMs = 16.7;
   private lastEvaluationAt = 0;
+  private lastModeCheckAt = 0;
   private level: VisualQuality = 'high';
   private mode: VisualQualityMode = loadVisualQualityMode();
 
@@ -24,6 +25,18 @@ export class AdaptiveQualityController {
   update(time: number, delta: number): VisualQuality | undefined {
     const frameMs = Math.max(4, Math.min(100, delta || 16.7));
     this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + frameMs * 0.08;
+
+    if (time - this.lastModeCheckAt >= 250) {
+      this.lastModeCheckAt = time;
+      const storedMode = loadVisualQualityMode();
+      if (storedMode !== this.mode) {
+        const previous = this.level;
+        this.mode = storedMode;
+        this.lastEvaluationAt = 0;
+        if (storedMode !== 'auto') this.level = storedMode;
+        if (this.level !== previous) return this.level;
+      }
+    }
 
     if (this.mode !== 'auto') return undefined;
     if (time - this.lastEvaluationAt < 3500) return undefined;
