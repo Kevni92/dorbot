@@ -28,10 +28,14 @@ export class HudController {
     this.el('sellCargoButton').addEventListener('click', callbacks.onSellCargo);
     this.el('closeStationButton').addEventListener('click', () => this.showStation(false));
     this.el('fullscreenButton').addEventListener('click', () => this.toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => this.refreshFullscreenButton());
 
     document.querySelectorAll<HTMLElement>('[data-ship]').forEach((button) => button.addEventListener('click', () => callbacks.onBuyShip(button.dataset.ship ?? '')));
     document.querySelectorAll<HTMLElement>('[data-upgrade]').forEach((button) => button.addEventListener('click', () => callbacks.onBuyUpgrade(button.dataset.upgrade ?? '')));
     document.querySelectorAll<HTMLElement>('.tab').forEach((button) => button.addEventListener('click', () => this.switchTab(button.dataset.tab ?? 'market')));
+
+    this.refreshAutoButtons();
+    this.refreshFullscreenButton();
   }
 
   updatePlayer(state: PlayerState, now: number): void {
@@ -72,14 +76,25 @@ export class HudController {
     const clear = () => { if (timer) window.clearTimeout(timer); timer = 0; };
     button.addEventListener('pointerdown', (event) => {
       event.preventDefault(); longPressed = false; clear();
-      timer = window.setTimeout(() => { longPressed = true; const next = id === 'laserButton' ? !this.laserAuto : !this.rocketAuto; toggleAuto(next); navigator.vibrate?.(35); }, 480);
+      timer = window.setTimeout(() => {
+        longPressed = true;
+        const next = id === 'laserButton' ? !this.laserAuto : !this.rocketAuto;
+        toggleAuto(next);
+        navigator.vibrate?.(35);
+        this.toast(`${id === 'laserButton' ? 'Laser' : 'Rakete'} Automatik ${next ? 'aktiv' : 'aus'}`);
+      }, 480);
     });
     button.addEventListener('pointerup', (event) => { event.preventDefault(); clear(); if (!longPressed) fire(); });
     button.addEventListener('pointercancel', clear); button.addEventListener('pointerleave', clear);
   }
 
   private refreshAutoButtons(): void {
-    this.el('laserButton').classList.toggle('auto', this.laserAuto); this.el('rocketButton').classList.toggle('auto', this.rocketAuto);
+    const laser = this.el('laserButton');
+    const rocket = this.el('rocketButton');
+    laser.classList.toggle('auto', this.laserAuto);
+    rocket.classList.toggle('auto', this.rocketAuto);
+    laser.setAttribute('aria-pressed', String(this.laserAuto));
+    rocket.setAttribute('aria-pressed', String(this.rocketAuto));
   }
 
   private switchTab(tab: string): void {
@@ -88,8 +103,26 @@ export class HudController {
   }
 
   private async toggleFullscreen(): Promise<void> {
-    try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); }
-    catch { this.toast('Fullscreen wird von diesem Browser nicht unterstützt.'); }
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        try { await (screen.orientation as any)?.lock?.('landscape'); } catch { /* browser may disallow orientation lock */ }
+      } else {
+        try { (screen.orientation as any)?.unlock?.(); } catch { /* optional API */ }
+        await document.exitFullscreen();
+      }
+    } catch {
+      this.toast('Fullscreen wird von diesem Browser nicht unterstützt.');
+    }
+  }
+
+  private refreshFullscreenButton(): void {
+    const button = this.el('fullscreenButton');
+    const active = Boolean(document.fullscreenElement);
+    button.textContent = active ? '⛶' : '⛶';
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.setAttribute('title', active ? 'Vollbild beenden' : 'Vollbild');
   }
 
   private setBar(id: string, ratio: number): void { (this.el(id) as HTMLElement).style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`; }
