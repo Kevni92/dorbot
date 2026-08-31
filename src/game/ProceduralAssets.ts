@@ -45,8 +45,8 @@ export function createProceduralAssets(scene: any): void {
   }
 
   if (!scene.textures.exists('station')) makeStation(scene);
-  if (!scene.textures.exists('stars-far')) makeStars(scene, 'stars-far', 0x566f9a, 55, 0.35);
-  if (!scene.textures.exists('stars-near')) makeStars(scene, 'stars-near', 0xe1f3ff, 28, 0.9);
+  if (!scene.textures.exists('stars-far')) makeSpaceLayer(scene, 'stars-far', true);
+  if (!scene.textures.exists('stars-near')) makeSpaceLayer(scene, 'stars-near', false);
 }
 
 function makeShip(scene: any, key: string, primary: number, accent: number): void {
@@ -61,34 +61,109 @@ function makeShip(scene: any, key: string, primary: number, accent: number): voi
 }
 
 function makeStation(scene: any): void {
-  const size = 460; const c = size / 2;
+  const size = 640;
+  const c = size / 2;
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0x2eddf5, 0.05); g.fillCircle(c, c, 220);
-  g.lineStyle(16, 0x28384f, 1); g.strokeCircle(c, c, 178);
-  g.lineStyle(4, 0x60e9ff, 0.8); g.strokeCircle(c, c, 178);
-  g.lineStyle(24, 0x1a2537, 1); g.strokeCircle(c, c, 108);
-  g.lineStyle(3, 0x8cf3ff, 0.7); g.strokeCircle(c, c, 108);
-  g.fillStyle(0x202d42, 1); g.fillCircle(c, c, 64);
-  g.lineStyle(3, 0x80edff, 1); g.strokeCircle(c, c, 64);
-  for (let i = 0; i < 8; i += 1) {
-    const a = (Math.PI * 2 * i) / 8;
-    const x1 = c + Math.cos(a) * 72; const y1 = c + Math.sin(a) * 72;
-    const x2 = c + Math.cos(a) * 160; const y2 = c + Math.sin(a) * 160;
-    g.lineStyle(22, 0x26354b, 1); g.lineBetween(x1, y1, x2, y2);
-    g.lineStyle(2, 0x54dff2, 0.65); g.lineBetween(x1, y1, x2, y2);
+
+  // Wide translucent halo and offset shadow establish depth before the hard geometry.
+  g.fillStyle(0x2eddf5, 0.025); g.fillCircle(c, c, 302);
+  g.fillStyle(0x00030a, 0.62); g.fillEllipse(c + 18, c + 26, 460, 390);
+  g.fillStyle(0x07111d, 0.95); g.fillEllipse(c, c, 448, 382);
+
+  // Outer orbital ring with a lower shadow edge and bright upper rim.
+  g.lineStyle(38, 0x101d2d, 1); g.strokeEllipse(c, c + 7, 452, 330);
+  g.lineStyle(25, 0x253b50, 1); g.strokeEllipse(c, c, 452, 330);
+  g.lineStyle(3, 0x67eaff, 0.78); g.strokeEllipse(c, c - 5, 448, 324);
+  g.lineStyle(2, 0xffffff, 0.15); g.strokeEllipse(c, c - 9, 430, 304);
+
+  // Four large industrial arms and end pods.
+  for (let i = 0; i < 4; i += 1) {
+    const a = (Math.PI * 2 * i) / 4;
+    const ax = Math.cos(a); const ay = Math.sin(a);
+    const x1 = c + ax * 92; const y1 = c + ay * 72;
+    const x2 = c + ax * 208; const y2 = c + ay * 150;
+    g.lineStyle(44, 0x0b1625, 1); g.lineBetween(x1 + 6, y1 + 8, x2 + 6, y2 + 8);
+    g.lineStyle(32, 0x30465b, 1); g.lineBetween(x1, y1, x2, y2);
+    g.lineStyle(3, 0x7defff, 0.55); g.lineBetween(x1 - ay * 7, y1 + ax * 7, x2 - ay * 7, y2 + ax * 7);
+    g.fillStyle(0x0b1725, 1); g.fillCircle(x2 + 6, y2 + 8, 34);
+    g.fillStyle(0x263b50, 1); g.fillCircle(x2, y2, 32);
+    g.lineStyle(3, 0x59dff5, 0.68); g.strokeCircle(x2, y2, 29);
+    g.fillStyle(0xffc75a, 0.95); g.fillCircle(x2 - ay * 20, y2 + ax * 20, 3);
+    g.fillStyle(0x65efff, 0.95); g.fillCircle(x2 + ay * 20, y2 - ax * 20, 3);
   }
-  for (let i = 0; i < 24; i += 1) {
-    const a = (Math.PI * 2 * i) / 24; const r = 178;
-    g.fillStyle(i % 3 === 0 ? 0xffcf5a : 0x5aeaff, 0.95); g.fillCircle(c + Math.cos(a) * r, c + Math.sin(a) * r, 3);
+
+  // Inner habitation torus.
+  g.lineStyle(45, 0x0a1421, 1); g.strokeEllipse(c + 8, c + 12, 250, 190);
+  g.lineStyle(34, 0x26394c, 1); g.strokeEllipse(c, c, 250, 190);
+  g.lineStyle(3, 0x92f4ff, 0.65); g.strokeEllipse(c, c - 5, 245, 184);
+
+  // Central reactor / command core with asymmetric highlight.
+  g.fillStyle(0x020811, 0.95); g.fillCircle(c + 9, c + 12, 79);
+  g.fillStyle(0x182a3e, 1); g.fillCircle(c, c, 76);
+  g.fillStyle(0x28455d, 1); g.fillCircle(c - 9, c - 12, 58);
+  g.lineStyle(4, 0x75efff, 0.85); g.strokeCircle(c, c, 75);
+  g.lineStyle(2, 0xd7fbff, 0.36); g.strokeCircle(c - 4, c - 6, 56);
+  g.fillStyle(0x5feaff, 0.12); g.fillCircle(c, c, 42);
+  g.fillStyle(0xcdfbff, 0.88); g.fillCircle(c - 12, c - 15, 7);
+
+  // Docking bay projects toward the bottom of the sprite, giving players a clear approach point.
+  g.fillStyle(0x02070d, 0.95); g.fillRoundedRect(c - 46, c + 166, 92, 92, 14);
+  g.fillStyle(0x17283a, 1); g.fillRoundedRect(c - 40, c + 158, 80, 88, 12);
+  g.lineStyle(3, 0x63eaff, 0.72); g.strokeRoundedRect(c - 40, c + 158, 80, 88, 12);
+  g.fillStyle(0x02050a, 1); g.fillRoundedRect(c - 26, c + 178, 52, 56, 8);
+  g.lineStyle(2, 0xffd067, 0.85); g.strokeRoundedRect(c - 24, c + 181, 48, 50, 7);
+  for (let i = 0; i < 5; i += 1) {
+    g.fillStyle(i % 2 ? 0x5eeaff : 0xffc95b, 0.95);
+    g.fillCircle(c - 30 + i * 15, c + 250, 3);
   }
+
+  // Dense running lights sell the apparent scale of the structure.
+  for (let i = 0; i < 40; i += 1) {
+    const a = (Math.PI * 2 * i) / 40;
+    const rx = 226; const ry = 165;
+    const x = c + Math.cos(a) * rx; const y = c + Math.sin(a) * ry;
+    g.fillStyle(i % 5 === 0 ? 0xffcf62 : 0x5eeaff, i % 3 === 0 ? 1 : 0.72);
+    g.fillCircle(x, y, i % 5 === 0 ? 3.2 : 2.1);
+  }
+
   g.generateTexture('station', size, size); g.destroy();
 }
 
-function makeStars(scene: any, key: string, color: number, count: number, alpha: number): void {
+function makeSpaceLayer(scene: any, key: string, far: boolean): void {
+  const size = 768;
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  for (let i = 0; i < count; i += 1) {
-    const x = Math.random() * 512; const y = Math.random() * 512; const r = Math.random() > 0.88 ? 1.8 : 0.8;
-    g.fillStyle(color, alpha * (0.45 + Math.random() * 0.55)); g.fillCircle(x, y, r);
+
+  if (far) {
+    // Soft overlapping translucent clouds create a repeating but unobtrusive nebula texture.
+    const clouds = [
+      [150, 180, 250, 160, 0x163c65, 0.08],
+      [610, 540, 330, 180, 0x532458, 0.065],
+      [420, 80, 240, 130, 0x183b59, 0.055],
+      [70, 650, 260, 145, 0x19375c, 0.05],
+    ];
+    clouds.forEach(([x, y, w, h, color, alpha]) => {
+      g.fillStyle(color as number, alpha as number); g.fillEllipse(x as number, y as number, w as number, h as number);
+    });
   }
-  g.generateTexture(key, 512, 512); g.destroy();
+
+  const count = far ? 145 : 66;
+  for (let i = 0; i < count; i += 1) {
+    const x = Math.random() * size; const y = Math.random() * size;
+    const bright = Math.random() > (far ? 0.93 : 0.83);
+    const r = bright ? (far ? 1.6 : 2.2) : (far ? 0.65 : 0.9);
+    const color = bright ? 0xe8f7ff : (Math.random() > 0.84 ? 0x96c5ff : 0x6e829b);
+    const alpha = far ? (0.22 + Math.random() * 0.42) : (0.35 + Math.random() * 0.55);
+    if (bright) { g.fillStyle(color, alpha * 0.12); g.fillCircle(x, y, r * 4.2); }
+    g.fillStyle(color, alpha); g.fillCircle(x, y, r);
+  }
+
+  if (!far) {
+    for (let i = 0; i < 18; i += 1) {
+      const x = Math.random() * size; const y = Math.random() * size;
+      g.lineStyle(1, 0x9bc8e6, 0.13 + Math.random() * 0.14);
+      g.lineBetween(x - 4, y, x + 4, y); g.lineBetween(x, y - 4, x, y + 4);
+    }
+  }
+
+  g.generateTexture(key, size, size); g.destroy();
 }
