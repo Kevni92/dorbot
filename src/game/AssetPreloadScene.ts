@@ -6,7 +6,15 @@ const SOURCE_ROOT = `https://cdn.jsdelivr.net/gh/EyeOfMidas/kenney-spritesheet-p
 
 const SEMANTIC_FRAMES: Record<string, string> = {
   'ship-player': 'playerShip1_blue.png',
+  'ship-scout': 'playerShip3_blue.png',
+  'ship-hunter': 'playerShip2_blue.png',
+  'ship-hauler': 'playerShip2_green.png',
   'ship-pirate': 'enemyRed2.png',
+  'ship-pirate-1': 'enemyRed1.png',
+  'ship-pirate-2': 'enemyRed2.png',
+  'ship-pirate-3': 'enemyRed3.png',
+  'ship-pirate-4': 'enemyBlack4.png',
+  'ship-pirate-5': 'enemyRed5.png',
   asteroid: 'meteorBrown_big1.png',
   ore: 'meteorGrey_small1.png',
   cargo: 'powerupYellow.png',
