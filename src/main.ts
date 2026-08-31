@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import './styles.css';
 import './launch.css';
+import './graphics-settings.css';
 import { AssetPreloadScene } from './game/AssetPreloadScene';
 import { GameScene } from './game/GameScene';
+import { GraphicsSettingsController } from './ui/GraphicsSettingsController';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -30,6 +32,8 @@ const game = new Phaser.Game({
   },
   scene: [AssetPreloadScene, GameScene],
 });
+
+new GraphicsSettingsController();
 
 window.addEventListener('resize', () => game.scale.resize(window.innerWidth, window.innerHeight));
 
