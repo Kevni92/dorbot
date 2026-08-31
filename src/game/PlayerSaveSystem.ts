@@ -1,10 +1,11 @@
 import { MODULE_CATALOG } from './equipment';
 import { SHIP_CATALOG, type ShipClass } from './ships';
-import type { ModuleId, ModuleInstance, PlayerState } from './models';
+import { RESOURCE_IDS, cargoTotal, createEmptyCargo } from './resources';
+import type { CargoManifest, ModuleId, ModuleInstance, PlayerState, ResourceId } from './models';
 
 const SAVE_KEY = 'dorbot.player-progress.v1';
 
-export interface PlayerProgressV1 {
+interface PlayerProgressV1 {
   version: 1;
   shipClass: ShipClass;
   credits: number;
@@ -12,33 +13,49 @@ export interface PlayerProgressV1 {
   modules: ModuleInstance[];
 }
 
+export interface PlayerProgressV2 {
+  version: 2;
+  shipClass: ShipClass;
+  credits: number;
+  cargoManifest: CargoManifest;
+  modules: ModuleInstance[];
+}
+
 export class PlayerSaveSystem {
-  load(): PlayerProgressV1 | undefined {
+  load(): PlayerProgressV2 | undefined {
     try {
       const raw = window.localStorage.getItem(SAVE_KEY);
       if (!raw) return undefined;
-      const value = JSON.parse(raw) as Partial<PlayerProgressV1>;
-      if (value.version !== 1) return undefined;
+      const value = JSON.parse(raw) as Partial<PlayerProgressV1 & PlayerProgressV2>;
       if (!this.isShipClass(value.shipClass)) return undefined;
 
       const credits = this.safeNumber(value.credits, 0, 1_000_000_000);
       const ship = SHIP_CATALOG[value.shipClass];
-      const cargo = Math.min(ship.cargo, this.safeNumber(value.cargo, 0, ship.cargo));
       const modules = this.sanitizeModules(value.modules);
       if (!modules.length) return undefined;
 
-      return { version: 1, shipClass: value.shipClass, credits, cargo, modules };
+      let cargoManifest: CargoManifest;
+      if (value.version === 2) {
+        cargoManifest = this.sanitizeCargo(value.cargoManifest, ship.cargo);
+      } else if (value.version === 1) {
+        cargoManifest = createEmptyCargo();
+        cargoManifest.ferrolite = this.safeNumber(value.cargo, 0, ship.cargo);
+      } else {
+        return undefined;
+      }
+
+      return { version: 2, shipClass: value.shipClass, credits, cargoManifest, modules };
     } catch {
       return undefined;
     }
   }
 
   save(state: PlayerState): void {
-    const progress: PlayerProgressV1 = {
-      version: 1,
+    const progress: PlayerProgressV2 = {
+      version: 2,
       shipClass: state.shipClass,
       credits: Math.max(0, Math.floor(state.credits)),
-      cargo: Math.max(0, Math.min(state.cargoCapacity, Math.floor(state.cargo))),
+      cargoManifest: this.sanitizeCargo(state.cargoManifest, state.cargoCapacity),
       modules: state.modules.map((item) => ({ ...item })),
     };
 
@@ -51,6 +68,23 @@ export class PlayerSaveSystem {
 
   clear(): void {
     try { window.localStorage.removeItem(SAVE_KEY); } catch { /* optional storage */ }
+  }
+
+  private sanitizeCargo(value: unknown, capacity: number): CargoManifest {
+    const result = createEmptyCargo();
+    if (!value || typeof value !== 'object') return result;
+    const source = value as Partial<Record<ResourceId, unknown>>;
+    let remaining = Math.max(0, Math.floor(capacity));
+
+    for (const id of RESOURCE_IDS) {
+      if (remaining <= 0) break;
+      const amount = this.safeNumber(source[id], 0, remaining);
+      result[id] = amount;
+      remaining -= amount;
+    }
+
+    if (cargoTotal(result) > capacity) return createEmptyCargo();
+    return result;
   }
 
   private sanitizeModules(value: unknown): ModuleInstance[] {
