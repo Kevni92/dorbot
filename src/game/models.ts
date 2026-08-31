@@ -1,5 +1,6 @@
 export type TargetKind = 'pirate' | 'asteroid';
 export type ModuleKind = 'laser' | 'rocket' | 'shield';
+export type ResourceId = 'ferrolite' | 'crysite' | 'aurite' | 'scrap';
 export type ModuleId =
   | 'laser-pulse-1'
   | 'laser-pulse-2'
@@ -11,6 +12,13 @@ export type ModuleId =
   | 'shield-generator-2'
   | 'shield-generator-3';
 
+export interface CargoManifest {
+  ferrolite: number;
+  crysite: number;
+  aurite: number;
+  scrap: number;
+}
+
 export interface CombatTarget {
   id: string;
   kind: TargetKind;
@@ -21,6 +29,8 @@ export interface CombatTarget {
   shield: number;
   maxShield: number;
   cargo: number;
+  resourceId: ResourceId;
+  explosionColor?: number;
   destroyed: boolean;
   nextShotAt?: number;
   wanderX?: number;
@@ -47,6 +57,7 @@ export interface PlayerState {
   shieldOfflineUntil: number;
   credits: number;
   cargo: number;
+  cargoManifest: CargoManifest;
   cargoCapacity: number;
   speed: number;
   laserDamage: number;
@@ -61,6 +72,7 @@ export interface PlayerState {
 export interface LootNode {
   id: string;
   sprite: any;
-  amount: number;
-  kind: 'ore' | 'cargo';
+  contents: CargoManifest;
+  kind: 'resource' | 'cargo';
+  resourceId?: ResourceId;
 }

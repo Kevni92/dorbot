@@ -7,7 +7,17 @@ import { SHIP_CATALOG, type ShipClass } from './ships';
 import { createWorldDecorations } from './WorldDecorationSystem';
 import { WorldIndicatorSystem } from './WorldIndicatorSystem';
 import { MODULE_CATALOG } from './equipment';
-import type { CombatTarget, LootNode, ModuleId, ModuleKind, PlayerState } from './models';
+import {
+  ASTEROID_CATALOG,
+  RESOURCE_CATALOG,
+  RESOURCE_IDS,
+  cargoTotal,
+  cargoValue,
+  cloneCargo,
+  createEmptyCargo,
+  manifestFor,
+} from './resources';
+import type { CombatTarget, LootNode, ModuleId, ModuleKind, PlayerState, ResourceId } from './models';
 import { HudController } from '../ui/HudController';
 
 const MAP_W = 6000;
@@ -28,7 +38,7 @@ export class GameScene extends Phaser.Scene {
   private progressRestored = false;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
-    credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
+    credits: 1500, cargo: 0, cargoManifest: createEmptyCargo(), cargoCapacity: 100, speed: 340,
     laserDamage: 18, laserCooldown: 380, rocketDamage: 42, rocketCooldown: 1500,
     shipClass: 'starter', moduleSlots: { laser: 1, rocket: 1, shield: 1 },
     modules: [
@@ -146,9 +156,32 @@ export class GameScene extends Phaser.Scene {
 
   private spawnAsteroids(): void {
     const positions = [[900,700],[1450,1050],[2050,720],[900,2800],[1550,3200],[2350,3000],[3900,650],[4650,950],[5300,1500],[4050,3200],[4800,2850],[5450,3400]];
+    const resources: Array<Exclude<ResourceId, 'scrap'>> = [
+      'ferrolite', 'ferrolite', 'crysite',
+      'ferrolite', 'crysite', 'aurite',
+      'crysite', 'ferrolite', 'aurite',
+      'ferrolite', 'crysite', 'aurite',
+    ];
+
     positions.forEach(([x, y], index) => {
-      const sprite = this.add.image(x, y, 'asteroid').setScale(1.05 + Math.random() * 0.65).setDepth(8).setInteractive({ useHandCursor: true });
-      const target: CombatTarget = { id: `ast-${index}`, kind: 'asteroid', sprite, name: `Asteroid ${index + 1}`, hp: 80, maxHp: 80, shield: 0, maxShield: 0, cargo: 12 + Math.floor(Math.random() * 15), destroyed: false };
+      const definition = ASTEROID_CATALOG[resources[index]];
+      const scale = Phaser.Math.FloatBetween(definition.scaleMin, definition.scaleMax);
+      const sprite = this.add.image(x, y, 'asteroid').setScale(scale).setTint(definition.tint).setDepth(8).setInteractive({ useHandCursor: true });
+      const yieldAmount = Phaser.Math.Between(definition.yieldMin, definition.yieldMax);
+      const target: CombatTarget = {
+        id: `ast-${index}`,
+        kind: 'asteroid',
+        sprite,
+        name: definition.name,
+        hp: definition.hp,
+        maxHp: definition.hp,
+        shield: 0,
+        maxShield: 0,
+        cargo: yieldAmount,
+        resourceId: definition.resourceId,
+        explosionColor: definition.explosionColor,
+        destroyed: false,
+      };
       sprite.on('pointerdown', (_p: any, _x: number, _y: number, event: any) => { event.stopPropagation(); this.selectTarget(target); });
       this.targets.push(target);
     });
@@ -159,7 +192,21 @@ export class GameScene extends Phaser.Scene {
     positions.forEach(([x, y], index) => {
       const texture = `ship-pirate-${(index % 5) + 1}`;
       const sprite = this.physics.add.image(x, y, texture).setDepth(16).setScale(0.72).setInteractive({ useHandCursor: true });
-      const target: CombatTarget = { id: `pir-${index}`, kind: 'pirate', sprite, name: `Streuner ${index + 1}`, hp: 90, maxHp: 90, shield: 55, maxShield: 55, cargo: 10 + Math.floor(Math.random() * 25), destroyed: false, nextShotAt: 0 };
+      const target: CombatTarget = {
+        id: `pir-${index}`,
+        kind: 'pirate',
+        sprite,
+        name: `Streuner ${index + 1}`,
+        hp: 90,
+        maxHp: 90,
+        shield: 55,
+        maxShield: 55,
+        cargo: 10 + Math.floor(Math.random() * 25),
+        resourceId: 'scrap',
+        explosionColor: 0xff5570,
+        destroyed: false,
+        nextShotAt: 0,
+      };
       sprite.on('pointerdown', (_p: any, _x: number, _y: number, event: any) => { event.stopPropagation(); this.selectTarget(target); });
       this.targets.push(target); this.pickWanderTarget(target);
     });
@@ -258,15 +305,25 @@ export class GameScene extends Phaser.Scene {
   private destroyTarget(target: CombatTarget): void {
     if (target.destroyed) return; target.destroyed = true;
     const x = target.sprite.x; const y = target.sprite.y; target.sprite.destroy();
-    this.explosion(x, y, target.kind === 'asteroid' ? 0x84a5c7 : 0xff5570, target.kind === 'asteroid' ? 0.75 : 1);
-    this.spawnLoot(x, y, target.cargo, target.kind === 'asteroid' ? 'ore' : 'cargo');
+    this.explosion(x, y, target.explosionColor ?? (target.kind === 'asteroid' ? 0x84a5c7 : 0xff5570), target.kind === 'asteroid' ? 0.75 : 1);
+    this.spawnResourceLoot(x, y, target.resourceId, target.cargo);
     if (this.selected === target) { this.selected = undefined; this.laserAuto = false; this.rocketAuto = false; this.hud.setAutoState(false, false); }
   }
 
-  private spawnLoot(x: number, y: number, amount: number, kind: 'ore' | 'cargo'): void {
-    const sprite = this.add.image(x, y, kind === 'ore' ? 'ore' : 'cargo').setDepth(14).setInteractive({ useHandCursor: true });
+  private spawnResourceLoot(x: number, y: number, resourceId: ResourceId, amount: number): void {
+    this.spawnLoot(x, y, manifestFor(resourceId, amount), 'resource', resourceId);
+  }
+
+  private spawnCargoContainer(x: number, y: number): void {
+    this.spawnLoot(x, y, cloneCargo(this.state.cargoManifest), 'cargo');
+  }
+
+  private spawnLoot(x: number, y: number, contents: LootNode['contents'], kind: LootNode['kind'], resourceId?: ResourceId): void {
+    const texture = kind === 'cargo' || resourceId === 'scrap' ? 'cargo' : 'ore';
+    const sprite = this.add.image(x, y, texture).setDepth(14).setInteractive({ useHandCursor: true });
+    if (resourceId) sprite.setTint(RESOURCE_CATALOG[resourceId].color);
     this.tweens.add({ targets: sprite, y: y - 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    const node: LootNode = { id: `loot-${Date.now()}-${Math.random()}`, sprite, amount, kind };
+    const node: LootNode = { id: `loot-${Date.now()}-${Math.random()}`, sprite, contents, kind, resourceId };
     sprite.on('pointerdown', (_p: any, _x: number, _y: number, event: any) => { event.stopPropagation(); this.pickupTarget = node; this.moveTarget = undefined; this.selected = undefined; });
     this.loot.push(node);
   }
@@ -274,11 +331,31 @@ export class GameScene extends Phaser.Scene {
   private updatePickup(): void {
     if (!this.pickupTarget) return;
     if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.pickupTarget.sprite.x, this.pickupTarget.sprite.y) > 52) return;
-    const free = this.state.cargoCapacity - this.state.cargo;
+    let free = this.state.cargoCapacity - this.state.cargo;
     if (free <= 0) { this.hud.toast('Laderaum voll'); this.pickupTarget = undefined; return; }
-    const collected = Math.min(free, this.pickupTarget.amount); this.state.cargo += collected; this.pickupTarget.amount -= collected;
-    this.hud.toast(`+${collected} Erz geborgen`);
-    if (this.pickupTarget.amount <= 0) { this.pickupTarget.sprite.destroy(); this.loot = this.loot.filter((x) => x !== this.pickupTarget); }
+
+    let collected = 0;
+    const collectedParts: string[] = [];
+    for (const id of RESOURCE_IDS) {
+      if (free <= 0) break;
+      const available = this.pickupTarget.contents[id];
+      if (available <= 0) continue;
+      const take = Math.min(free, available);
+      this.pickupTarget.contents[id] -= take;
+      this.state.cargoManifest[id] += take;
+      collected += take;
+      free -= take;
+      collectedParts.push(`${take} ${RESOURCE_CATALOG[id].name}`);
+    }
+
+    this.state.cargo = cargoTotal(this.state.cargoManifest);
+    if (collectedParts.length === 1) this.hud.toast(`+${collectedParts[0]} geborgen`);
+    else this.hud.toast(`+${collected} Einheiten Fracht geborgen`);
+
+    if (cargoTotal(this.pickupTarget.contents) <= 0) {
+      this.pickupTarget.sprite.destroy();
+      this.loot = this.loot.filter((x) => x !== this.pickupTarget);
+    }
     this.pickupTarget = undefined; this.player.setVelocity(0, 0); this.saveProgress();
   }
 
@@ -329,7 +406,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private destroyPlayer(): void {
-    const x = this.player.x; const y = this.player.y; if (this.state.cargo > 0) this.spawnLoot(x, y, this.state.cargo, 'cargo'); this.state.cargo = 0;
+    const x = this.player.x; const y = this.player.y;
+    if (this.state.cargo > 0) this.spawnCargoContainer(x, y);
+    this.state.cargoManifest = createEmptyCargo();
+    this.state.cargo = 0;
     this.saveProgress();
     this.explosion(x, y, 0x61e7ff, 1.4); this.player.setVisible(false).setVelocity(0, 0); this.state.hp = this.state.maxHp; this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0;
     this.time.delayedCall(1800, () => { this.player.setPosition(STATION_X, STATION_Y + 520).setVisible(true); this.hud.toast('Rettungssystem: Schiff rekonstruiert'); });
@@ -345,14 +425,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private sellCargo(): void {
-    if (!this.state.cargo) { this.hud.toast('Kein Erz im Laderaum'); return; }
-    const value = this.state.cargo * 12; this.state.credits += value; this.state.cargo = 0; this.saveProgress(); this.hud.toast(`Erz verkauft: +₡ ${value}`);
+    if (!this.state.cargo) { this.hud.toast('Keine Fracht im Laderaum'); return; }
+    const value = cargoValue(this.state.cargoManifest);
+    this.state.credits += value;
+    this.state.cargoManifest = createEmptyCargo();
+    this.state.cargo = 0;
+    this.saveProgress();
+    this.hud.toast(`Fracht verkauft: +₡ ${value.toLocaleString('de-DE')}`);
   }
 
   private buyShip(ship: string): void {
     const offer = SHIP_CATALOG[ship as ShipClass];
     if (!offer || offer.id === 'starter') return;
     if (this.state.credits < offer.price) { this.hud.toast('Nicht genug Credits'); return; }
+    if (this.state.cargo > offer.cargo) { this.hud.toast(`Zu viel Fracht · ${offer.name} fasst ${offer.cargo}`); return; }
 
     this.state.credits -= offer.price;
     this.applyShipDefinition(offer.id);
@@ -419,7 +505,8 @@ export class GameScene extends Phaser.Scene {
     if (!progress) return false;
 
     this.state.credits = progress.credits;
-    this.state.cargo = progress.cargo;
+    this.state.cargoManifest = cloneCargo(progress.cargoManifest);
+    this.state.cargo = cargoTotal(this.state.cargoManifest);
     this.state.modules = progress.modules.map((item) => ({ ...item }));
     this.applyShipDefinition(progress.shipClass);
     return true;
@@ -431,7 +518,7 @@ export class GameScene extends Phaser.Scene {
     this.state.maxHp = ship.hp;
     this.state.hp = ship.hp;
     this.state.cargoCapacity = ship.cargo;
-    this.state.cargo = Math.min(this.state.cargo, ship.cargo);
+    this.state.cargo = cargoTotal(this.state.cargoManifest);
     this.state.speed = ship.speed;
     this.state.moduleSlots = { ...ship.slots };
     this.state.shieldOfflineUntil = 0;
