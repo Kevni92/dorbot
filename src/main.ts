@@ -33,7 +33,7 @@ const game = new Phaser.Game({
   scene: [AssetPreloadScene, GameScene],
 });
 
-new GraphicsSettingsController();
+new GraphicsSettingsController(game);
 
 window.addEventListener('resize', () => game.scale.resize(window.innerWidth, window.innerHeight));
 
