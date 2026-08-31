@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { createProceduralAssets } from './ProceduralAssets';
+import { EffectsSystem } from './EffectsSystem';
 import { MODULE_CATALOG } from './equipment';
 import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
 import { HudController } from '../ui/HudController';
@@ -15,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   private player!: any;
   private station!: any;
   private hud!: HudController;
+  private effects!: EffectsSystem;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
     credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
@@ -45,6 +47,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     createProceduralAssets(this);
+    this.effects = new EffectsSystem(this);
     this.recalculateEquipment(true);
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H).setZoom(1);
@@ -75,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   update(time: number): void {
     this.updateShield(time);
     this.updateMovement();
+    this.effects.updateThruster(this.player, time, this.state.shipClass === 'hauler' ? 0x62ffc7 : 0x55ddff, 1);
     this.updatePickup();
     this.updatePirates(time);
     this.updateAutoFire(time);
@@ -192,9 +196,11 @@ export class GameScene extends Phaser.Scene {
     const target = this.validSelected(1250); if (!target) { this.nextRocketAt = now + 700; this.hud.toast('Kein Ziel in Raketenreichweite'); return; }
     this.nextRocketAt = now + Math.max(600, this.state.rocketCooldown);
     const torpedo = this.state.modules.some((item) => item.equipped && item.moduleId === 'rocket-torpedo-1');
+    const duration = torpedo ? 560 : 420;
     const rocket = this.add.image(this.player.x, this.player.y, 'rocket').setDepth(28).setScale(torpedo ? 0.85 : 0.6);
     rocket.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.sprite.x, target.sprite.y) + Math.PI / 2;
-    this.tweens.add({ targets: rocket, x: target.sprite.x, y: target.sprite.y, duration: torpedo ? 560 : 420, ease: 'Sine.in', onComplete: () => { rocket.destroy(); if (!target.destroyed) { this.explosion(target.sprite.x, target.sprite.y, torpedo ? 0xff7050 : 0xffa84f, torpedo ? 0.9 : 0.55); this.applyDamage(target, this.state.rocketDamage); } } });
+    this.effects.startMissileTrail(rocket, torpedo ? 0xff6f4c : 0xffc766, duration);
+    this.tweens.add({ targets: rocket, x: target.sprite.x, y: target.sprite.y, duration, ease: 'Sine.in', onComplete: () => { rocket.destroy(); if (!target.destroyed) { this.explosion(target.sprite.x, target.sprite.y, torpedo ? 0xff7050 : 0xffa84f, torpedo ? 0.9 : 0.55); this.applyDamage(target, this.state.rocketDamage); } } });
   }
 
   private updateAutoFire(time: number): void { if (this.selected && !this.selected.destroyed) { if (this.laserAuto && time >= this.nextLaserAt) this.fireLaser(); if (this.rocketAuto && time >= this.nextRocketAt) this.fireRocket(); } }
@@ -205,9 +211,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyDamage(target: CombatTarget, amount: number): void {
-    if (target.shield > 0) { const absorbed = Math.min(target.shield, amount); target.shield -= absorbed; amount -= absorbed; }
-    if (amount > 0) target.hp -= amount;
-    target.sprite.setTintFill?.(0xffffff); this.time.delayedCall(70, () => target.sprite.clearTint?.());
+    let shieldAbsorbed = 0;
+    if (target.shield > 0) { shieldAbsorbed = Math.min(target.shield, amount); target.shield -= shieldAbsorbed; amount -= shieldAbsorbed; }
+    if (shieldAbsorbed > 0) this.effects.shieldHit(target.sprite, target.kind === 'pirate' ? 0xff7890 : 0x61e7ff);
+    if (amount > 0) {
+      target.hp -= amount;
+      target.sprite.setTintFill?.(0xffffff); this.time.delayedCall(70, () => target.sprite.clearTint?.());
+    }
     if (target.hp <= 0) this.destroyTarget(target);
   }
 
@@ -250,6 +260,7 @@ export class GameScene extends Phaser.Scene {
         const wanderX = pirate.wanderX ?? sprite.x; const wanderY = pirate.wanderY ?? sprite.y;
         const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, wanderX, wanderY); sprite.setVelocity(Math.cos(angle) * 72, Math.sin(angle) * 72); sprite.rotation = angle + Math.PI / 2;
       }
+      this.effects.updateThruster(sprite, time, 0xff536d, 0.55);
       if (Phaser.Math.Distance.Between(sprite.x, sprite.y, STATION_X, STATION_Y) < SAFE_RADIUS) this.pickWanderTarget(pirate, true);
     }
   }
@@ -261,17 +272,26 @@ export class GameScene extends Phaser.Scene {
   }
 
   private damagePlayer(amount: number, time: number): void {
+    let shieldAbsorbed = 0;
     if (this.state.shield > 0 && time >= this.state.shieldOfflineUntil) {
-      const absorbed = Math.min(this.state.shield, amount); this.state.shield -= absorbed; amount -= absorbed;
+      shieldAbsorbed = Math.min(this.state.shield, amount); this.state.shield -= shieldAbsorbed; amount -= shieldAbsorbed;
       if (this.state.shield <= 0 && this.state.maxShield > 0) this.state.shieldOfflineUntil = time + 30000;
     }
-    if (amount > 0) this.state.hp -= amount;
-    this.cameras.main.shake(110, 0.0025); this.player.setTintFill?.(0xffffff); this.time.delayedCall(70, () => this.player.clearTint?.());
+    if (shieldAbsorbed > 0) this.effects.shieldHit(this.player, 0x61e7ff);
+    if (amount > 0) {
+      this.state.hp -= amount;
+      this.player.setTintFill?.(0xffffff); this.time.delayedCall(70, () => this.player.clearTint?.());
+    }
+    this.cameras.main.shake(shieldAbsorbed > 0 ? 70 : 115, shieldAbsorbed > 0 ? 0.0014 : 0.0028);
     if (this.state.hp <= 0) this.destroyPlayer();
   }
 
   private updateShield(time: number): void {
-    if (this.state.maxShield > 0 && this.state.shield <= 0 && this.state.shieldOfflineUntil > 0 && time >= this.state.shieldOfflineUntil) { this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0; this.hud.toast('Schild wieder online'); }
+    if (this.state.maxShield > 0 && this.state.shield <= 0 && this.state.shieldOfflineUntil > 0 && time >= this.state.shieldOfflineUntil) {
+      this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0;
+      this.effects.shieldHit(this.player, 0x76f6ff);
+      this.hud.toast('Schild wieder online');
+    }
   }
 
   private destroyPlayer(): void {
@@ -280,19 +300,9 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(1800, () => { this.player.setPosition(STATION_X, STATION_Y + 520).setVisible(true); this.hud.toast('Rettungssystem: Schiff rekonstruiert'); });
   }
 
-  private beamEffect(x1: number, y1: number, x2: number, y2: number, color: number): void {
-    const beam = this.add.graphics().setDepth(30); beam.lineStyle(10, color, 0.16); beam.lineBetween(x1, y1, x2, y2); beam.lineStyle(3, color, 0.95); beam.lineBetween(x1, y1, x2, y2); beam.lineStyle(1, 0xffffff, 1); beam.lineBetween(x1, y1, x2, y2);
-    this.tweens.add({ targets: beam, alpha: 0, duration: 150, onComplete: () => beam.destroy() });
-  }
+  private beamEffect(x1: number, y1: number, x2: number, y2: number, color: number): void { this.effects.beam(x1, y1, x2, y2, color); }
 
-  private explosion(x: number, y: number, color: number, scale: number): void {
-    const ring = this.add.circle(x, y, 18, color, 0.28).setStrokeStyle(4, color, 0.9).setDepth(31);
-    this.tweens.add({ targets: ring, radius: 105 * scale, alpha: 0, duration: 430, ease: 'Cubic.out', onComplete: () => ring.destroy() });
-    for (let i = 0; i < 14; i += 1) {
-      const p = this.add.circle(x, y, Phaser.Math.Between(2, 6), i % 2 ? color : 0xffffff, 0.9).setDepth(32); const a = Math.random() * Math.PI * 2; const d = Phaser.Math.Between(45, 150) * scale;
-      this.tweens.add({ targets: p, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, scale: 0.2, duration: Phaser.Math.Between(260, 620), onComplete: () => p.destroy() });
-    }
-  }
+  private explosion(x: number, y: number, color: number, scale: number): void { this.effects.explosion(x, y, color, scale); }
 
   private tryDock(): void {
     if (Phaser.Math.Distance.Between(this.player.x, this.player.y, STATION_X, STATION_Y) > DOCK_RADIUS) { this.hud.toast('Zu weit von der Station entfernt'); return; }
