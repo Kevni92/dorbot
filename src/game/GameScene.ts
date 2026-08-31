@@ -3,6 +3,7 @@ import { createProceduralAssets } from './ProceduralAssets';
 import { AdaptiveQualityController } from './AdaptiveQualityController';
 import { EffectsSystem } from './EffectsSystem';
 import { createWorldDecorations } from './WorldDecorationSystem';
+import { WorldIndicatorSystem } from './WorldIndicatorSystem';
 import { MODULE_CATALOG } from './equipment';
 import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
 import { HudController } from '../ui/HudController';
@@ -20,6 +21,7 @@ export class GameScene extends Phaser.Scene {
   private hud!: HudController;
   private effects!: EffectsSystem;
   private quality!: AdaptiveQualityController;
+  private indicators!: WorldIndicatorSystem;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
     credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
@@ -68,6 +70,7 @@ export class GameScene extends Phaser.Scene {
     this.player = this.physics.add.image(STATION_X, STATION_Y + 520, 'ship-player').setDepth(20).setCollideWorldBounds(true).setDrag(800).setMaxVelocity(this.state.speed);
     this.player.setScale(0.8);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
+    this.indicators = new WorldIndicatorSystem(this);
 
     this.spawnAsteroids();
     this.spawnPirates();
@@ -98,6 +101,7 @@ export class GameScene extends Phaser.Scene {
     this.updatePirates(time);
     this.updateAutoFire(time);
     this.updateParallax();
+    this.indicators.update(this.player, this.selected, this.pickupTarget);
 
     const distToStation = Phaser.Math.Distance.Between(this.player.x, this.player.y, STATION_X, STATION_Y);
     this.hud.setDockVisible(distToStation <= DOCK_RADIUS && !this.hud.isStationOpen());
@@ -159,7 +163,11 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.on('pointerup', (pointer: any) => {
       if (this.holdTimer) this.holdTimer.remove(false);
-      if (!this.holdActive && !this.hud.isStationOpen()) { const world = pointer.positionToCamera(this.cameras.main) as any; this.moveTarget = { x: world.x, y: world.y }; this.pickupTarget = undefined; }
+      if (!this.holdActive && !this.hud.isStationOpen()) {
+        const world = pointer.positionToCamera(this.cameras.main) as any;
+        this.moveTarget = { x: world.x, y: world.y }; this.pickupTarget = undefined;
+        this.indicators.showMoveCommand(world.x, world.y);
+      }
       this.holdActive = false; this.holdPointer = undefined;
     });
     this.input.on('wheel', (_p: any, _go: any, _dx: number, dy: number) => this.setZoom(this.cameras.main.zoom - dy * 0.001));
