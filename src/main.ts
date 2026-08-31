@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './styles.css';
+import './launch.css';
 import { AssetPreloadScene } from './game/AssetPreloadScene';
 import { GameScene } from './game/GameScene';
 
