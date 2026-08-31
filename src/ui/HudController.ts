@@ -1,4 +1,5 @@
-import type { PlayerState } from '../game/models';
+import { MODULE_CATALOG } from '../game/equipment';
+import type { ModuleId, ModuleKind, PlayerState } from '../game/models';
 
 export interface HudCallbacks {
   onLaser: () => void;
@@ -8,7 +9,8 @@ export interface HudCallbacks {
   onDock: () => void;
   onSellCargo: () => void;
   onBuyShip: (ship: string) => void;
-  onBuyUpgrade: (upgrade: string) => void;
+  onBuyModule: (moduleId: ModuleId) => void;
+  onToggleModule: (uid: string) => void;
 }
 
 export class HudController {
@@ -31,7 +33,15 @@ export class HudController {
     document.addEventListener('fullscreenchange', () => this.refreshFullscreenButton());
 
     document.querySelectorAll<HTMLElement>('[data-ship]').forEach((button) => button.addEventListener('click', () => callbacks.onBuyShip(button.dataset.ship ?? '')));
-    document.querySelectorAll<HTMLElement>('[data-upgrade]').forEach((button) => button.addEventListener('click', () => callbacks.onBuyUpgrade(button.dataset.upgrade ?? '')));
+    document.querySelectorAll<HTMLElement>('[data-module]').forEach((button) => button.addEventListener('click', () => {
+      const moduleId = button.dataset.module as ModuleId | undefined;
+      if (moduleId) callbacks.onBuyModule(moduleId);
+    }));
+    this.el('ownedModules').addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest<HTMLElement>('[data-module-instance]');
+      if (button?.dataset.moduleInstance) callbacks.onToggleModule(button.dataset.moduleInstance);
+    });
     document.querySelectorAll<HTMLElement>('.tab').forEach((button) => button.addEventListener('click', () => this.switchTab(button.dataset.tab ?? 'market')));
 
     this.refreshAutoButtons();
@@ -39,8 +49,8 @@ export class HudController {
   }
 
   updatePlayer(state: PlayerState, now: number): void {
-    this.setBar('hpBar', state.hp / state.maxHp);
-    this.setBar('shieldBar', state.shield / state.maxShield);
+    this.setBar('hpBar', state.maxHp > 0 ? state.hp / state.maxHp : 0);
+    this.setBar('shieldBar', state.maxShield > 0 ? state.shield / state.maxShield : 0);
     this.el('hpText').textContent = `${Math.ceil(state.hp)} / ${state.maxHp}`;
     this.el('shieldText').textContent = `${Math.ceil(state.shield)} / ${state.maxShield}`;
     this.el('credits').textContent = `₡ ${Math.floor(state.credits).toLocaleString('de-DE')}`;
@@ -50,6 +60,20 @@ export class HudController {
     if (state.shieldOfflineUntil > now) {
       cooldown.classList.remove('hidden'); cooldown.textContent = `Schild lädt: ${Math.ceil((state.shieldOfflineUntil - now) / 1000)}s`;
     } else cooldown.classList.add('hidden');
+  }
+
+  renderEquipment(state: PlayerState): void {
+    const kinds: ModuleKind[] = ['laser', 'rocket', 'shield'];
+    const labels: Record<ModuleKind, string> = { laser: 'LASER', rocket: 'RAKETE', shield: 'SCHILD' };
+    const equippedCount = (kind: ModuleKind) => state.modules.filter((item) => item.equipped && MODULE_CATALOG[item.moduleId].kind === kind).length;
+
+    this.el('slotSummary').innerHTML = kinds.map((kind) => `<span class="slot-chip ${kind}"><b>${labels[kind]}</b>${equippedCount(kind)} / ${state.moduleSlots[kind]}</span>`).join('');
+    this.el('equipmentStats').textContent = `LAS ${state.laserDamage} · RKT ${state.rocketDamage} · SHD ${state.maxShield}`;
+
+    this.el('ownedModules').innerHTML = state.modules.map((item) => {
+      const module = MODULE_CATALOG[item.moduleId];
+      return `<button class="owned-module ${item.equipped ? 'equipped' : ''}" data-module-instance="${item.uid}" type="button"><span><b>${module.name}</b><small>${module.description}</small></span><em>${item.equipped ? 'EINGEBAUT' : 'EINBAUEN'}</em></button>`;
+    }).join('');
   }
 
   updateCoordinates(x: number, y: number): void { this.el('coordinates').textContent = `X ${Math.round(x).toString().padStart(4, '0')} · Y ${Math.round(y).toString().padStart(4, '0')}`; }
@@ -119,7 +143,7 @@ export class HudController {
   private refreshFullscreenButton(): void {
     const button = this.el('fullscreenButton');
     const active = Boolean(document.fullscreenElement);
-    button.textContent = active ? '⛶' : '⛶';
+    button.textContent = '⛶';
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
     button.setAttribute('title', active ? 'Vollbild beenden' : 'Vollbild');

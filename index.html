@@ -68,16 +68,32 @@
             </div>
             <div id="tab-shipyard" class="tab-content">
               <div class="shop-grid">
-                <button class="shop-card" data-ship="scout" type="button"><b>Scout</b><span>Tempo 420 · Cargo 70</span><em>₡ 900</em></button>
-                <button class="shop-card" data-ship="hunter" type="button"><b>Hunter</b><span>HP 140 · Schild 130</span><em>₡ 1.800</em></button>
-                <button class="shop-card" data-ship="hauler" type="button"><b>Hauler</b><span>Cargo 180 · HP 170</span><em>₡ 2.400</em></button>
+                <button class="shop-card" data-ship="scout" type="button"><b>Scout</b><span>HP 90 · Tempo 420 · Slots 1/1/1</span><em>₡ 900</em></button>
+                <button class="shop-card" data-ship="hunter" type="button"><b>Hunter</b><span>HP 140 · Slots 2 Laser / 2 Rakete / 2 Schild</span><em>₡ 1.800</em></button>
+                <button class="shop-card" data-ship="hauler" type="button"><b>Hauler</b><span>Cargo 180 · Slots 1 Laser / 1 Rakete / 3 Schild</span><em>₡ 2.400</em></button>
               </div>
             </div>
             <div id="tab-equipment" class="tab-content">
-              <div class="shop-grid">
-                <button class="shop-card" data-upgrade="shield2" type="button"><b>Schild Mk II</b><span>+60 Schild</span><em>₡ 700</em></button>
-                <button class="shop-card" data-upgrade="laser2" type="button"><b>Pulslaser II</b><span>+8 Laserschaden</span><em>₡ 650</em></button>
-                <button class="shop-card" data-upgrade="rocket2" type="button"><b>Raketenwerfer II</b><span>+16 Raketenschaden</span><em>₡ 850</em></button>
+              <div class="equipment-layout">
+                <section class="equipment-owned">
+                  <div class="section-title"><div><small>DEIN SCHIFF</small><strong>Modulslots & Inventar</strong></div><span id="equipmentStats">–</span></div>
+                  <div id="slotSummary" class="slot-summary"></div>
+                  <div id="ownedModules" class="owned-modules"></div>
+                </section>
+                <section class="equipment-store">
+                  <div class="section-title"><div><small>STATIONSSORTIMENT</small><strong>Module kaufen</strong></div></div>
+                  <div class="shop-grid module-shop-grid">
+                    <button class="shop-card module-card laser-module" data-module="laser-pulse-1" type="button"><b>Pulslaser I</b><span>18 Schaden · 0,38 s</span><em>₡ 320</em></button>
+                    <button class="shop-card module-card laser-module" data-module="laser-pulse-2" type="button"><b>Pulslaser II</b><span>28 Schaden · 0,34 s</span><em>₡ 650</em></button>
+                    <button class="shop-card module-card laser-module" data-module="laser-beam-1" type="button"><b>Beamlaser I</b><span>48 Schaden · 0,72 s</span><em>₡ 1.100</em></button>
+                    <button class="shop-card module-card rocket-module" data-module="rocket-launcher-1" type="button"><b>Raketenwerfer I</b><span>42 Schaden · 1,50 s</span><em>₡ 420</em></button>
+                    <button class="shop-card module-card rocket-module" data-module="rocket-launcher-2" type="button"><b>Raketenwerfer II</b><span>62 Schaden · 1,35 s</span><em>₡ 850</em></button>
+                    <button class="shop-card module-card rocket-module" data-module="rocket-torpedo-1" type="button"><b>Torpedowerfer I</b><span>110 Schaden · 2,60 s</span><em>₡ 1.450</em></button>
+                    <button class="shop-card module-card shield-module" data-module="shield-generator-1" type="button"><b>Schildgenerator I</b><span>+100 Schild</span><em>₡ 350</em></button>
+                    <button class="shop-card module-card shield-module" data-module="shield-generator-2" type="button"><b>Schildgenerator II</b><span>+160 Schild</span><em>₡ 700</em></button>
+                    <button class="shop-card module-card shield-module" data-module="shield-generator-3" type="button"><b>Schildgenerator III</b><span>+260 Schild</span><em>₡ 1.350</em></button>
+                  </div>
+                </section>
               </div>
             </div>
           </section>

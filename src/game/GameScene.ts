@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { createProceduralAssets } from './ProceduralAssets';
-import type { CombatTarget, LootNode, PlayerState } from './models';
+import { MODULE_CATALOG } from './equipment';
+import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
 import { HudController } from '../ui/HudController';
 
 const MAP_W = 6000;
@@ -16,7 +17,14 @@ export class GameScene extends Phaser.Scene {
   private hud!: HudController;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
-    credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340, laserDamage: 18, rocketDamage: 42, shipClass: 'starter',
+    credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
+    laserDamage: 18, laserCooldown: 380, rocketDamage: 42, rocketCooldown: 1500,
+    shipClass: 'starter', moduleSlots: { laser: 1, rocket: 1, shield: 1 },
+    modules: [
+      { uid: 'starter-laser', moduleId: 'laser-pulse-1', equipped: true },
+      { uid: 'starter-rocket', moduleId: 'rocket-launcher-1', equipped: true },
+      { uid: 'starter-shield', moduleId: 'shield-generator-1', equipped: true },
+    ],
   };
   private targets: CombatTarget[] = [];
   private loot: LootNode[] = [];
@@ -37,6 +45,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     createProceduralAssets(this);
+    this.recalculateEquipment(true);
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H).setZoom(1);
 
@@ -57,8 +66,9 @@ export class GameScene extends Phaser.Scene {
       onLaser: () => this.fireLaser(), onRocket: () => this.fireRocket(),
       onLaserAuto: (active) => { this.laserAuto = active; }, onRocketAuto: (active) => { this.rocketAuto = active; },
       onDock: () => this.tryDock(), onSellCargo: () => this.sellCargo(),
-      onBuyShip: (ship) => this.buyShip(ship), onBuyUpgrade: (upgrade) => this.buyUpgrade(upgrade),
+      onBuyShip: (ship) => this.buyShip(ship), onBuyModule: (moduleId) => this.buyModule(moduleId), onToggleModule: (uid) => this.toggleModule(uid),
     });
+    this.hud.renderEquipment(this.state);
     this.hud.toast('Sektor online · Tippe ins All, um zu fliegen');
   }
 
@@ -168,17 +178,22 @@ export class GameScene extends Phaser.Scene {
 
   private fireLaser(): void {
     const now = this.time.now; if (now < this.nextLaserAt) return;
-    const target = this.validSelected(860); if (!target) { this.hud.toast('Kein Ziel in Laserreichweite'); return; }
-    this.nextLaserAt = now + 380; this.beamEffect(this.player.x, this.player.y, target.sprite.x, target.sprite.y, 0x63e9ff); this.applyDamage(target, this.state.laserDamage);
+    if (this.state.laserDamage <= 0) { this.nextLaserAt = now + 800; this.hud.toast('Keine Laserwaffe ausgerüstet'); return; }
+    const target = this.validSelected(860); if (!target) { this.nextLaserAt = now + 450; this.hud.toast('Kein Ziel in Laserreichweite'); return; }
+    this.nextLaserAt = now + Math.max(180, this.state.laserCooldown);
+    const beamColor = this.state.modules.some((item) => item.equipped && item.moduleId === 'laser-beam-1') ? 0xb58cff : 0x63e9ff;
+    this.beamEffect(this.player.x, this.player.y, target.sprite.x, target.sprite.y, beamColor); this.applyDamage(target, this.state.laserDamage);
   }
 
   private fireRocket(): void {
     const now = this.time.now; if (now < this.nextRocketAt) return;
-    const target = this.validSelected(1250); if (!target) { this.hud.toast('Kein Ziel in Raketenreichweite'); return; }
-    this.nextRocketAt = now + 1500;
-    const rocket = this.add.image(this.player.x, this.player.y, 'rocket').setDepth(28).setScale(0.6);
+    if (this.state.rocketDamage <= 0) { this.nextRocketAt = now + 1000; this.hud.toast('Kein Raketenmodul ausgerüstet'); return; }
+    const target = this.validSelected(1250); if (!target) { this.nextRocketAt = now + 700; this.hud.toast('Kein Ziel in Raketenreichweite'); return; }
+    this.nextRocketAt = now + Math.max(600, this.state.rocketCooldown);
+    const torpedo = this.state.modules.some((item) => item.equipped && item.moduleId === 'rocket-torpedo-1');
+    const rocket = this.add.image(this.player.x, this.player.y, 'rocket').setDepth(28).setScale(torpedo ? 0.85 : 0.6);
     rocket.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.sprite.x, target.sprite.y) + Math.PI / 2;
-    this.tweens.add({ targets: rocket, x: target.sprite.x, y: target.sprite.y, duration: 420, ease: 'Sine.in', onComplete: () => { rocket.destroy(); if (!target.destroyed) { this.explosion(target.sprite.x, target.sprite.y, 0xffa84f, 0.55); this.applyDamage(target, this.state.rocketDamage); } } });
+    this.tweens.add({ targets: rocket, x: target.sprite.x, y: target.sprite.y, duration: torpedo ? 560 : 420, ease: 'Sine.in', onComplete: () => { rocket.destroy(); if (!target.destroyed) { this.explosion(target.sprite.x, target.sprite.y, torpedo ? 0xff7050 : 0xffa84f, torpedo ? 0.9 : 0.55); this.applyDamage(target, this.state.rocketDamage); } } });
   }
 
   private updateAutoFire(time: number): void { if (this.selected && !this.selected.destroyed) { if (this.laserAuto && time >= this.nextLaserAt) this.fireLaser(); if (this.rocketAuto && time >= this.nextRocketAt) this.fireRocket(); } }
@@ -247,7 +262,7 @@ export class GameScene extends Phaser.Scene {
   private damagePlayer(amount: number, time: number): void {
     if (this.state.shield > 0 && time >= this.state.shieldOfflineUntil) {
       const absorbed = Math.min(this.state.shield, amount); this.state.shield -= absorbed; amount -= absorbed;
-      if (this.state.shield <= 0) this.state.shieldOfflineUntil = time + 30000;
+      if (this.state.shield <= 0 && this.state.maxShield > 0) this.state.shieldOfflineUntil = time + 30000;
     }
     if (amount > 0) this.state.hp -= amount;
     this.cameras.main.shake(110, 0.0025); this.player.setTintFill?.(0xffffff); this.time.delayedCall(70, () => this.player.clearTint?.());
@@ -255,7 +270,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateShield(time: number): void {
-    if (this.state.shield <= 0 && this.state.shieldOfflineUntil > 0 && time >= this.state.shieldOfflineUntil) { this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0; this.hud.toast('Schild wieder online'); }
+    if (this.state.maxShield > 0 && this.state.shield <= 0 && this.state.shieldOfflineUntil > 0 && time >= this.state.shieldOfflineUntil) { this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0; this.hud.toast('Schild wieder online'); }
   }
 
   private destroyPlayer(): void {
@@ -280,7 +295,7 @@ export class GameScene extends Phaser.Scene {
 
   private tryDock(): void {
     if (Phaser.Math.Distance.Between(this.player.x, this.player.y, STATION_X, STATION_Y) > DOCK_RADIUS) { this.hud.toast('Zu weit von der Station entfernt'); return; }
-    this.player.setVelocity(0, 0); this.hud.showStation(true);
+    this.player.setVelocity(0, 0); this.hud.renderEquipment(this.state); this.hud.showStation(true);
   }
 
   private sellCargo(): void {
@@ -289,22 +304,69 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buyShip(ship: string): void {
-    const offers: Record<string, { price: number; hp: number; shield: number; cargo: number; speed: number; label: PlayerState['shipClass'] }> = {
-      scout: { price: 900, hp: 90, shield: 85, cargo: 70, speed: 420, label: 'scout' },
-      hunter: { price: 1800, hp: 140, shield: 130, cargo: 95, speed: 345, label: 'hunter' },
-      hauler: { price: 2400, hp: 170, shield: 120, cargo: 180, speed: 285, label: 'hauler' },
+    const offers: Record<string, { price: number; hp: number; cargo: number; speed: number; label: PlayerState['shipClass']; slots: ModuleSlots }> = {
+      scout: { price: 900, hp: 90, cargo: 70, speed: 420, label: 'scout', slots: { laser: 1, rocket: 1, shield: 1 } },
+      hunter: { price: 1800, hp: 140, cargo: 95, speed: 345, label: 'hunter', slots: { laser: 2, rocket: 2, shield: 2 } },
+      hauler: { price: 2400, hp: 170, cargo: 180, speed: 285, label: 'hauler', slots: { laser: 1, rocket: 1, shield: 3 } },
     };
     const offer = offers[ship]; if (!offer) return; if (this.state.credits < offer.price) { this.hud.toast('Nicht genug Credits'); return; }
-    this.state.credits -= offer.price; this.state.maxHp = offer.hp; this.state.hp = offer.hp; this.state.maxShield = offer.shield; this.state.shield = offer.shield; this.state.cargoCapacity = offer.cargo; this.state.speed = offer.speed; this.state.shipClass = offer.label; this.player.setMaxVelocity(offer.speed); this.hud.toast(`${ship.toUpperCase()} übernommen`);
+    this.state.credits -= offer.price;
+    this.state.maxHp = offer.hp; this.state.hp = offer.hp; this.state.cargoCapacity = offer.cargo; this.state.cargo = Math.min(this.state.cargo, offer.cargo);
+    this.state.speed = offer.speed; this.state.shipClass = offer.label; this.state.moduleSlots = { ...offer.slots };
+    this.player.setMaxVelocity(offer.speed); this.enforceSlotLimits(); this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
+    this.hud.toast(`${ship.toUpperCase()} übernommen · Module angepasst`);
   }
 
-  private buyUpgrade(upgrade: string): void {
-    const costs: Record<string, number> = { shield2: 700, laser2: 650, rocket2: 850 }; const price = costs[upgrade]; if (!price) return;
-    if (this.state.credits < price) { this.hud.toast('Nicht genug Credits'); return; }
-    this.state.credits -= price;
-    if (upgrade === 'shield2') { this.state.maxShield += 60; this.state.shield = this.state.maxShield; }
-    if (upgrade === 'laser2') this.state.laserDamage += 8;
-    if (upgrade === 'rocket2') this.state.rocketDamage += 16;
-    this.hud.toast('Modul installiert');
+  private buyModule(moduleId: ModuleId): void {
+    const module = MODULE_CATALOG[moduleId]; if (!module) return;
+    if (this.state.credits < module.price) { this.hud.toast('Nicht genug Credits'); return; }
+    this.state.credits -= module.price;
+    const used = this.equippedCount(module.kind);
+    const equipped = used < this.state.moduleSlots[module.kind];
+    this.state.modules.push({ uid: `${moduleId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`, moduleId, equipped });
+    this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
+    this.hud.toast(`${module.name} gekauft${equipped ? ' und eingebaut' : ' · Inventar'}`);
+  }
+
+  private toggleModule(uid: string): void {
+    const instance = this.state.modules.find((item) => item.uid === uid); if (!instance) return;
+    const module = MODULE_CATALOG[instance.moduleId];
+    if (instance.equipped) instance.equipped = false;
+    else {
+      if (this.equippedCount(module.kind) >= this.state.moduleSlots[module.kind]) { this.hud.toast(`Kein freier ${module.kind === 'laser' ? 'Laser' : module.kind === 'rocket' ? 'Raketen' : 'Schild'}-Slot`); return; }
+      instance.equipped = true;
+    }
+    this.recalculateEquipment(true);
+    if (this.state.laserDamage <= 0) this.laserAuto = false;
+    if (this.state.rocketDamage <= 0) this.rocketAuto = false;
+    this.hud.setAutoState(this.laserAuto, this.rocketAuto); this.hud.renderEquipment(this.state);
+    this.hud.toast(`${module.name} ${instance.equipped ? 'eingebaut' : 'ausgebaut'}`);
+  }
+
+  private equippedCount(kind: ModuleKind): number {
+    return this.state.modules.filter((item) => item.equipped && MODULE_CATALOG[item.moduleId].kind === kind).length;
+  }
+
+  private enforceSlotLimits(): void {
+    const kinds: ModuleKind[] = ['laser', 'rocket', 'shield'];
+    for (const kind of kinds) {
+      const equipped = this.state.modules.filter((item) => item.equipped && MODULE_CATALOG[item.moduleId].kind === kind);
+      equipped.slice(this.state.moduleSlots[kind]).forEach((item) => { item.equipped = false; });
+    }
+  }
+
+  private recalculateEquipment(refillShield: boolean): void {
+    const equipped = this.state.modules.filter((item) => item.equipped).map((item) => MODULE_CATALOG[item.moduleId]);
+    const lasers = equipped.filter((module) => module.kind === 'laser');
+    const rockets = equipped.filter((module) => module.kind === 'rocket');
+    const shields = equipped.filter((module) => module.kind === 'shield');
+
+    this.state.laserDamage = lasers.reduce((sum, module) => sum + (module.damage ?? 0), 0);
+    this.state.laserCooldown = lasers.length ? Math.max(...lasers.map((module) => module.cooldown ?? 380)) : 0;
+    this.state.rocketDamage = rockets.reduce((sum, module) => sum + (module.damage ?? 0), 0);
+    this.state.rocketCooldown = rockets.length ? Math.max(...rockets.map((module) => module.cooldown ?? 1500)) : 0;
+    this.state.maxShield = shields.reduce((sum, module) => sum + (module.shield ?? 0), 0);
+    this.state.shield = refillShield ? this.state.maxShield : Math.min(this.state.shield, this.state.maxShield);
+    if (this.state.maxShield <= 0) this.state.shieldOfflineUntil = 0;
   }
 }
