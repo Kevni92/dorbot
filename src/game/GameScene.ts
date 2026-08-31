@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import { createProceduralAssets } from './ProceduralAssets';
 import { AdaptiveQualityController } from './AdaptiveQualityController';
 import { EffectsSystem } from './EffectsSystem';
+import { PlayerSaveSystem } from './PlayerSaveSystem';
+import { SHIP_CATALOG, type ShipClass } from './ships';
 import { createWorldDecorations } from './WorldDecorationSystem';
 import { WorldIndicatorSystem } from './WorldIndicatorSystem';
 import { MODULE_CATALOG } from './equipment';
-import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
+import type { CombatTarget, LootNode, ModuleId, ModuleKind, PlayerState } from './models';
 import { HudController } from '../ui/HudController';
 
 const MAP_W = 6000;
@@ -22,6 +24,8 @@ export class GameScene extends Phaser.Scene {
   private effects!: EffectsSystem;
   private quality!: AdaptiveQualityController;
   private indicators!: WorldIndicatorSystem;
+  private readonly saves = new PlayerSaveSystem();
+  private progressRestored = false;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
     credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
@@ -57,7 +61,11 @@ export class GameScene extends Phaser.Scene {
     this.effects.setQuality(this.quality.current);
     this.registry.set('visualQuality', this.quality.current);
     this.registry.set('estimatedFps', 60);
+
+    this.progressRestored = this.restoreProgress();
+    this.enforceSlotLimits();
     this.recalculateEquipment(true);
+
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H).setZoom(1);
 
@@ -67,8 +75,9 @@ export class GameScene extends Phaser.Scene {
     this.station = this.add.image(STATION_X, STATION_Y, 'station').setDepth(4).setScale(1.25);
     this.add.text(STATION_X, STATION_Y + 310, 'STATION AEGIS // SAFE ZONE', { fontFamily: 'monospace', fontSize: '18px', color: '#64eaff' }).setOrigin(0.5).setAlpha(0.8).setDepth(5);
 
-    this.player = this.physics.add.image(STATION_X, STATION_Y + 520, 'ship-player').setDepth(20).setCollideWorldBounds(true).setDrag(800).setMaxVelocity(this.state.speed);
-    this.player.setScale(0.8);
+    const activeShip = SHIP_CATALOG[this.state.shipClass];
+    this.player = this.physics.add.image(STATION_X, STATION_Y + 520, activeShip.texture).setDepth(20).setCollideWorldBounds(true).setDrag(800).setMaxVelocity(activeShip.speed);
+    this.player.setScale(activeShip.scale);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
     this.indicators = new WorldIndicatorSystem(this);
 
@@ -83,7 +92,9 @@ export class GameScene extends Phaser.Scene {
       onBuyShip: (ship) => this.buyShip(ship), onBuyModule: (moduleId) => this.buyModule(moduleId), onToggleModule: (uid) => this.toggleModule(uid),
     });
     this.hud.renderEquipment(this.state);
-    this.hud.toast('Sektor online · Tippe ins All, um zu fliegen');
+    this.hud.toast(this.progressRestored ? `Fortschritt geladen · ${activeShip.name}` : 'Sektor online · Tippe ins All, um zu fliegen');
+
+    window.addEventListener('pagehide', () => this.saveProgress(), { once: true });
   }
 
   update(time: number, delta: number): void {
@@ -268,7 +279,7 @@ export class GameScene extends Phaser.Scene {
     const collected = Math.min(free, this.pickupTarget.amount); this.state.cargo += collected; this.pickupTarget.amount -= collected;
     this.hud.toast(`+${collected} Erz geborgen`);
     if (this.pickupTarget.amount <= 0) { this.pickupTarget.sprite.destroy(); this.loot = this.loot.filter((x) => x !== this.pickupTarget); }
-    this.pickupTarget = undefined; this.player.setVelocity(0, 0);
+    this.pickupTarget = undefined; this.player.setVelocity(0, 0); this.saveProgress();
   }
 
   private updatePirates(time: number): void {
@@ -319,6 +330,7 @@ export class GameScene extends Phaser.Scene {
 
   private destroyPlayer(): void {
     const x = this.player.x; const y = this.player.y; if (this.state.cargo > 0) this.spawnLoot(x, y, this.state.cargo, 'cargo'); this.state.cargo = 0;
+    this.saveProgress();
     this.explosion(x, y, 0x61e7ff, 1.4); this.player.setVisible(false).setVelocity(0, 0); this.state.hp = this.state.maxHp; this.state.shield = this.state.maxShield; this.state.shieldOfflineUntil = 0;
     this.time.delayedCall(1800, () => { this.player.setPosition(STATION_X, STATION_Y + 520).setVisible(true); this.hud.toast('Rettungssystem: Schiff rekonstruiert'); });
   }
@@ -334,22 +346,19 @@ export class GameScene extends Phaser.Scene {
 
   private sellCargo(): void {
     if (!this.state.cargo) { this.hud.toast('Kein Erz im Laderaum'); return; }
-    const value = this.state.cargo * 12; this.state.credits += value; this.state.cargo = 0; this.hud.toast(`Erz verkauft: +₡ ${value}`);
+    const value = this.state.cargo * 12; this.state.credits += value; this.state.cargo = 0; this.saveProgress(); this.hud.toast(`Erz verkauft: +₡ ${value}`);
   }
 
   private buyShip(ship: string): void {
-    const offers: Record<string, { price: number; hp: number; cargo: number; speed: number; label: PlayerState['shipClass']; slots: ModuleSlots; texture: string; scale: number }> = {
-      scout: { price: 900, hp: 90, cargo: 70, speed: 420, label: 'scout', slots: { laser: 1, rocket: 1, shield: 1 }, texture: 'ship-scout', scale: 0.72 },
-      hunter: { price: 1800, hp: 140, cargo: 95, speed: 345, label: 'hunter', slots: { laser: 2, rocket: 2, shield: 2 }, texture: 'ship-hunter', scale: 0.88 },
-      hauler: { price: 2400, hp: 170, cargo: 180, speed: 285, label: 'hauler', slots: { laser: 1, rocket: 1, shield: 3 }, texture: 'ship-hauler', scale: 1.0 },
-    };
-    const offer = offers[ship]; if (!offer) return; if (this.state.credits < offer.price) { this.hud.toast('Nicht genug Credits'); return; }
+    const offer = SHIP_CATALOG[ship as ShipClass];
+    if (!offer || offer.id === 'starter') return;
+    if (this.state.credits < offer.price) { this.hud.toast('Nicht genug Credits'); return; }
+
     this.state.credits -= offer.price;
-    this.state.maxHp = offer.hp; this.state.hp = offer.hp; this.state.cargoCapacity = offer.cargo; this.state.cargo = Math.min(this.state.cargo, offer.cargo);
-    this.state.speed = offer.speed; this.state.shipClass = offer.label; this.state.moduleSlots = { ...offer.slots };
+    this.applyShipDefinition(offer.id);
     this.player.setMaxVelocity(offer.speed).setTexture(offer.texture).setScale(offer.scale);
-    this.enforceSlotLimits(); this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
-    this.hud.toast(`${ship.toUpperCase()} übernommen · Module angepasst`);
+    this.enforceSlotLimits(); this.recalculateEquipment(true); this.hud.renderEquipment(this.state); this.saveProgress();
+    this.hud.toast(`${offer.name.toUpperCase()} übernommen · Module angepasst`);
   }
 
   private buyModule(moduleId: ModuleId): void {
@@ -359,7 +368,7 @@ export class GameScene extends Phaser.Scene {
     const used = this.equippedCount(module.kind);
     const equipped = used < this.state.moduleSlots[module.kind];
     this.state.modules.push({ uid: `${moduleId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`, moduleId, equipped });
-    this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
+    this.recalculateEquipment(true); this.hud.renderEquipment(this.state); this.saveProgress();
     this.hud.toast(`${module.name} gekauft${equipped ? ' und eingebaut' : ' · Inventar'}`);
   }
 
@@ -374,7 +383,7 @@ export class GameScene extends Phaser.Scene {
     this.recalculateEquipment(true);
     if (this.state.laserDamage <= 0) this.laserAuto = false;
     if (this.state.rocketDamage <= 0) this.rocketAuto = false;
-    this.hud.setAutoState(this.laserAuto, this.rocketAuto); this.hud.renderEquipment(this.state);
+    this.hud.setAutoState(this.laserAuto, this.rocketAuto); this.hud.renderEquipment(this.state); this.saveProgress();
     this.hud.toast(`${module.name} ${instance.equipped ? 'eingebaut' : 'ausgebaut'}`);
   }
 
@@ -404,4 +413,29 @@ export class GameScene extends Phaser.Scene {
     this.state.shield = refillShield ? this.state.maxShield : Math.min(this.state.shield, this.state.maxShield);
     if (this.state.maxShield <= 0) this.state.shieldOfflineUntil = 0;
   }
+
+  private restoreProgress(): boolean {
+    const progress = this.saves.load();
+    if (!progress) return false;
+
+    this.state.credits = progress.credits;
+    this.state.cargo = progress.cargo;
+    this.state.modules = progress.modules.map((item) => ({ ...item }));
+    this.applyShipDefinition(progress.shipClass);
+    return true;
+  }
+
+  private applyShipDefinition(shipClass: ShipClass): void {
+    const ship = SHIP_CATALOG[shipClass];
+    this.state.shipClass = ship.id;
+    this.state.maxHp = ship.hp;
+    this.state.hp = ship.hp;
+    this.state.cargoCapacity = ship.cargo;
+    this.state.cargo = Math.min(this.state.cargo, ship.cargo);
+    this.state.speed = ship.speed;
+    this.state.moduleSlots = { ...ship.slots };
+    this.state.shieldOfflineUntil = 0;
+  }
+
+  private saveProgress(): void { this.saves.save(this.state); }
 }
