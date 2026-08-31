@@ -123,7 +123,8 @@ export class GameScene extends Phaser.Scene {
   private spawnPirates(): void {
     const positions = [[700,1800],[1700,450],[5200,650],[4700,3500],[1200,3500]];
     positions.forEach(([x, y], index) => {
-      const sprite = this.physics.add.image(x, y, 'ship-pirate').setDepth(16).setScale(0.72).setInteractive({ useHandCursor: true });
+      const texture = `ship-pirate-${(index % 5) + 1}`;
+      const sprite = this.physics.add.image(x, y, texture).setDepth(16).setScale(0.72).setInteractive({ useHandCursor: true });
       const target: CombatTarget = { id: `pir-${index}`, kind: 'pirate', sprite, name: `Streuner ${index + 1}`, hp: 90, maxHp: 90, shield: 55, maxShield: 55, cargo: 10 + Math.floor(Math.random() * 25), destroyed: false, nextShotAt: 0 };
       sprite.on('pointerdown', (_p: any, _x: number, _y: number, event: any) => { event.stopPropagation(); this.selectTarget(target); });
       this.targets.push(target); this.pickWanderTarget(target);
@@ -304,16 +305,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buyShip(ship: string): void {
-    const offers: Record<string, { price: number; hp: number; cargo: number; speed: number; label: PlayerState['shipClass']; slots: ModuleSlots }> = {
-      scout: { price: 900, hp: 90, cargo: 70, speed: 420, label: 'scout', slots: { laser: 1, rocket: 1, shield: 1 } },
-      hunter: { price: 1800, hp: 140, cargo: 95, speed: 345, label: 'hunter', slots: { laser: 2, rocket: 2, shield: 2 } },
-      hauler: { price: 2400, hp: 170, cargo: 180, speed: 285, label: 'hauler', slots: { laser: 1, rocket: 1, shield: 3 } },
+    const offers: Record<string, { price: number; hp: number; cargo: number; speed: number; label: PlayerState['shipClass']; slots: ModuleSlots; texture: string; scale: number }> = {
+      scout: { price: 900, hp: 90, cargo: 70, speed: 420, label: 'scout', slots: { laser: 1, rocket: 1, shield: 1 }, texture: 'ship-scout', scale: 0.72 },
+      hunter: { price: 1800, hp: 140, cargo: 95, speed: 345, label: 'hunter', slots: { laser: 2, rocket: 2, shield: 2 }, texture: 'ship-hunter', scale: 0.88 },
+      hauler: { price: 2400, hp: 170, cargo: 180, speed: 285, label: 'hauler', slots: { laser: 1, rocket: 1, shield: 3 }, texture: 'ship-hauler', scale: 1.0 },
     };
     const offer = offers[ship]; if (!offer) return; if (this.state.credits < offer.price) { this.hud.toast('Nicht genug Credits'); return; }
     this.state.credits -= offer.price;
     this.state.maxHp = offer.hp; this.state.hp = offer.hp; this.state.cargoCapacity = offer.cargo; this.state.cargo = Math.min(this.state.cargo, offer.cargo);
     this.state.speed = offer.speed; this.state.shipClass = offer.label; this.state.moduleSlots = { ...offer.slots };
-    this.player.setMaxVelocity(offer.speed); this.enforceSlotLimits(); this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
+    this.player.setMaxVelocity(offer.speed).setTexture(offer.texture).setScale(offer.scale);
+    this.enforceSlotLimits(); this.recalculateEquipment(true); this.hud.renderEquipment(this.state);
     this.hud.toast(`${ship.toUpperCase()} übernommen · Module angepasst`);
   }
 
