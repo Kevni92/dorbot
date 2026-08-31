@@ -1,0 +1,24 @@
+.graphics-settings-button { font-size: 15px; }
+.graphics-settings-backdrop { pointer-events: auto; position: absolute; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(1, 4, 10, .68); }
+.graphics-settings-window { width: min(560px, 100%); padding: 16px; border-radius: 10px; }
+.graphics-settings-window header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.graphics-settings-window small { color: #5fe9ff; letter-spacing: .15em; font-size: 9px; }
+.graphics-settings-window h2 { margin: 3px 0 8px; font-size: 20px; }
+.graphics-settings-window p { margin: 8px 0 14px; color: #8fa8b8; font-size: 12px; line-height: 1.45; }
+.quality-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.quality-options button { min-height: 78px; border: 1px solid rgba(94,231,255,.18); background: rgba(24,55,75,.38); border-radius: 7px; display: grid; align-content: center; gap: 5px; padding: 8px; cursor: pointer; text-align: left; }
+.quality-options button b { font-size: 10px; color: #d1f8ff; letter-spacing: .1em; }
+.quality-options button span { color: #7f99aa; font-size: 8px; line-height: 1.25; }
+.quality-options button.active { border-color: #63ffc9; background: rgba(34,108,91,.32); box-shadow: inset 0 0 18px rgba(70,255,198,.1), 0 0 14px rgba(70,255,198,.1); }
+.quality-options button.active b { color: #76ffd3; }
+.graphics-performance-status { margin-top: 12px; padding: 8px 10px; border: 1px solid rgba(95,230,255,.12); background: rgba(0,0,0,.16); color: #83c8d7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+.topbar:has(.graphics-settings-button) { grid-template-columns: 1fr auto 38px 38px; }
+@media (max-width: 680px) {
+  .topbar:has(.graphics-settings-button) { grid-template-columns: 1fr 38px 38px; min-width: 232px; }
+  .quality-options { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .graphics-settings-window { max-height: 94vh; overflow: auto; padding: 12px; }
+  .quality-options button { min-height: 58px; }
+  .graphics-settings-window p { margin: 5px 0 9px; }
+}
