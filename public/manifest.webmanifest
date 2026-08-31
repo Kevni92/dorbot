@@ -1,0 +1,19 @@
+{
+  "name": "Dorbot Prototype",
+  "short_name": "Dorbot",
+  "description": "Mobile-first HTML5 top-down space combat and mining prototype.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#030711",
+  "theme_color": "#050b16",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
