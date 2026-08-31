@@ -16,6 +16,27 @@
     <div id="app">
       <div id="game"></div>
       <div id="hud" aria-label="Spieloberfläche">
+        <div id="launchOverlay" class="launch-overlay">
+          <section class="launch-window glass" aria-labelledby="launchTitle">
+            <div class="launch-heading">
+              <small>DORBOT // MOBILE COMBAT PROTOTYPE</small>
+              <h1 id="launchTitle">SECTOR 01</h1>
+              <p>Starte am besten im Vollbild und im Querformat. Du kannst jederzeit über das Symbol oben rechts wieder umschalten.</p>
+            </div>
+            <div class="launch-controls" aria-label="Touch-Steuerung">
+              <div class="launch-control"><b>TIPpen</b><span>Freie Stelle antippen: Schiff fliegt direkt dorthin.</span></div>
+              <div class="launch-control"><b>HALTEN</b><span>Finger gedrückt halten: dauerhaft in diese Richtung fliegen.</span></div>
+              <div class="launch-control"><b>PINCH</b><span>Zwei Finger zusammen/auseinander: Kamera zoomen.</span></div>
+              <div class="launch-control"><b>WAFFEN</b><span>Ziel antippen. Waffe halten: Automatik ein/aus.</span></div>
+            </div>
+            <div class="launch-actions">
+              <button id="launchFullscreenButton" class="launch-primary" type="button">⛶ FULLSCREEN STARTEN</button>
+              <button id="launchBrowserButton" class="launch-secondary" type="button">IM BROWSER STARTEN</button>
+            </div>
+            <div class="launch-note">Auf iPhone/iPad und einzelnen Browsern kann die Fullscreen-/Landscape-Unterstützung eingeschränkt sein. Installierter Web-App-Modus nutzt die verfügbare Bildschirmfläche automatisch.</div>
+          </section>
+        </div>
+
         <div class="topbar glass">
           <div class="brand">DORBOT // SECTOR 01</div>
           <div id="coordinates">X 0000 · Y 0000</div>
