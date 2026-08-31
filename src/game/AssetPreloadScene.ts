@@ -8,6 +8,8 @@ const SEMANTIC_FRAMES: Record<string, string> = {
   'ship-player': 'playerShip1_blue.png',
   'ship-pirate': 'enemyRed2.png',
   asteroid: 'meteorBrown_big1.png',
+  ore: 'meteorGrey_small1.png',
+  cargo: 'powerupYellow.png',
 };
 
 export class AssetPreloadScene extends Phaser.Scene {
