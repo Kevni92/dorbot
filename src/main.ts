@@ -31,3 +31,11 @@ const game = new Phaser.Game({
 });
 
 window.addEventListener('resize', () => game.scale.resize(window.innerWidth, window.innerHeight));
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // The game remains fully usable without service-worker support.
+    });
+  });
+}
