@@ -21,6 +21,8 @@ export class HudController {
   private lastCargoSignature = '';
 
   constructor(private readonly callbacks: HudCallbacks) {
+    this.ensureMarketResourcesHost();
+
     this.bindActionButton('laserButton', () => callbacks.onLaser(), (active) => {
       this.laserAuto = active; callbacks.onLaserAuto(active); this.refreshAutoButtons();
     });
@@ -101,6 +103,18 @@ export class HudController {
     const toast = this.el('toast'); toast.textContent = message; toast.classList.remove('hidden');
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => toast.classList.add('hidden'), 1900);
+  }
+
+  private ensureMarketResourcesHost(): void {
+    if (document.getElementById('marketResources')) return;
+    const marketCargo = this.el('marketCargo');
+    const row = marketCargo.closest('.shop-row');
+    const parent = row?.parentElement;
+    if (!row || !parent) throw new Error('Market cargo row missing');
+    const grid = document.createElement('div');
+    grid.id = 'marketResources';
+    grid.className = 'shop-grid';
+    parent.insertBefore(grid, row);
   }
 
   private renderMarketCargo(state: PlayerState): void {
