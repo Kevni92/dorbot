@@ -1,4 +1,5 @@
 import { MODULE_CATALOG } from '../game/equipment';
+import { RESOURCE_CATALOG, RESOURCE_IDS, cargoValue } from '../game/resources';
 import type { ModuleId, ModuleKind, PlayerState } from '../game/models';
 
 export interface HudCallbacks {
@@ -17,6 +18,7 @@ export class HudController {
   private laserAuto = false;
   private rocketAuto = false;
   private toastTimer?: number;
+  private lastCargoSignature = '';
 
   constructor(private readonly callbacks: HudCallbacks) {
     this.bindActionButton('laserButton', () => callbacks.onLaser(), (active) => {
@@ -61,7 +63,7 @@ export class HudController {
     this.el('shieldText').textContent = `${Math.ceil(state.shield)} / ${state.maxShield}`;
     this.el('credits').textContent = `₡ ${Math.floor(state.credits).toLocaleString('de-DE')}`;
     this.el('cargo').textContent = `Cargo ${state.cargo} / ${state.cargoCapacity}`;
-    this.el('marketCargo').textContent = `${state.cargo} Erz`;
+    this.renderMarketCargo(state);
     const cooldown = this.el('shieldCooldown');
     if (state.shieldOfflineUntil > now) {
       cooldown.classList.remove('hidden'); cooldown.textContent = `Schild lädt: ${Math.ceil((state.shieldOfflineUntil - now) / 1000)}s`;
@@ -99,6 +101,21 @@ export class HudController {
     const toast = this.el('toast'); toast.textContent = message; toast.classList.remove('hidden');
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => toast.classList.add('hidden'), 1900);
+  }
+
+  private renderMarketCargo(state: PlayerState): void {
+    const signature = `${state.cargoCapacity}|${RESOURCE_IDS.map((id) => state.cargoManifest[id]).join('|')}`;
+    if (signature === this.lastCargoSignature) return;
+    this.lastCargoSignature = signature;
+
+    const value = cargoValue(state.cargoManifest);
+    this.el('marketCargo').textContent = `${state.cargo} / ${state.cargoCapacity} Einheiten · Wert ₡ ${value.toLocaleString('de-DE')}`;
+    this.el('marketResources').innerHTML = RESOURCE_IDS.map((id) => {
+      const resource = RESOURCE_CATALOG[id];
+      const amount = state.cargoManifest[id];
+      const total = amount * resource.price;
+      return `<div class="shop-card" style="border-color:${resource.colorCss}55"><b style="color:${resource.colorCss}">${resource.name}</b><span>${amount} Einheiten · ₡ ${resource.price}/E</span><em>₡ ${total.toLocaleString('de-DE')}</em></div>`;
+    }).join('');
   }
 
   private bindActionButton(id: string, fire: () => void, toggleAuto: (active: boolean) => void): void {
