@@ -231,7 +231,8 @@ export class GameScene extends Phaser.Scene {
         if (time >= (pirate.nextShotAt ?? 0) && playerDistance < 560) { pirate.nextShotAt = time + 1450; this.beamEffect(sprite.x, sprite.y, this.player.x, this.player.y, 0xff4e72); this.damagePlayer(13, time); }
       } else {
         if (!pirate.wanderX || Phaser.Math.Distance.Between(sprite.x, sprite.y, pirate.wanderX, pirate.wanderY ?? 0) < 60) this.pickWanderTarget(pirate);
-        const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, pirate.wanderX, pirate.wanderY); sprite.setVelocity(Math.cos(angle) * 72, Math.sin(angle) * 72); sprite.rotation = angle + Math.PI / 2;
+        const wanderX = pirate.wanderX ?? sprite.x; const wanderY = pirate.wanderY ?? sprite.y;
+        const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, wanderX, wanderY); sprite.setVelocity(Math.cos(angle) * 72, Math.sin(angle) * 72); sprite.rotation = angle + Math.PI / 2;
       }
       if (Phaser.Math.Distance.Between(sprite.x, sprite.y, STATION_X, STATION_Y) < SAFE_RADIUS) this.pickWanderTarget(pirate, true);
     }
