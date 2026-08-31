@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { createProceduralAssets } from './ProceduralAssets';
+import { AdaptiveQualityController } from './AdaptiveQualityController';
 import { EffectsSystem } from './EffectsSystem';
 import { MODULE_CATALOG } from './equipment';
 import type { CombatTarget, LootNode, ModuleId, ModuleKind, ModuleSlots, PlayerState } from './models';
@@ -17,6 +18,7 @@ export class GameScene extends Phaser.Scene {
   private station!: any;
   private hud!: HudController;
   private effects!: EffectsSystem;
+  private quality!: AdaptiveQualityController;
   private state: PlayerState = {
     hp: 100, maxHp: 100, shield: 100, maxShield: 100, shieldOfflineUntil: 0,
     credits: 1500, cargo: 0, cargoCapacity: 100, speed: 340,
@@ -48,6 +50,10 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     createProceduralAssets(this);
     this.effects = new EffectsSystem(this);
+    this.quality = new AdaptiveQualityController();
+    this.effects.setQuality(this.quality.current);
+    this.registry.set('visualQuality', this.quality.current);
+    this.registry.set('estimatedFps', 60);
     this.recalculateEquipment(true);
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H).setZoom(1);
@@ -75,7 +81,14 @@ export class GameScene extends Phaser.Scene {
     this.hud.toast('Sektor online · Tippe ins All, um zu fliegen');
   }
 
-  update(time: number): void {
+  update(time: number, delta: number): void {
+    const qualityChange = this.quality.update(time, delta);
+    if (qualityChange) {
+      this.effects.setQuality(qualityChange);
+      this.registry.set('visualQuality', qualityChange);
+    }
+    this.registry.set('estimatedFps', Math.round(this.quality.estimatedFps));
+
     this.updateShield(time);
     this.updateMovement();
     this.effects.updateThruster(this.player, time, this.state.shipClass === 'hauler' ? 0x62ffc7 : 0x55ddff, 1);
