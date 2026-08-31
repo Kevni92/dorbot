@@ -26,11 +26,12 @@ export class PlayerSaveSystem {
     try {
       const raw = window.localStorage.getItem(SAVE_KEY);
       if (!raw) return undefined;
-      const value = JSON.parse(raw) as Partial<PlayerProgressV1 & PlayerProgressV2>;
+      const value = JSON.parse(raw) as Record<string, unknown>;
       if (!this.isShipClass(value.shipClass)) return undefined;
 
+      const shipClass = value.shipClass;
       const credits = this.safeNumber(value.credits, 0, 1_000_000_000);
-      const ship = SHIP_CATALOG[value.shipClass];
+      const ship = SHIP_CATALOG[shipClass];
       const modules = this.sanitizeModules(value.modules);
       if (!modules.length) return undefined;
 
@@ -44,7 +45,7 @@ export class PlayerSaveSystem {
         return undefined;
       }
 
-      return { version: 2, shipClass: value.shipClass, credits, cargoManifest, modules };
+      return { version: 2, shipClass, credits, cargoManifest, modules };
     } catch {
       return undefined;
     }
