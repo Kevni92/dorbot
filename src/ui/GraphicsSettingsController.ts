@@ -1,17 +1,12 @@
+import type Phaser from 'phaser';
 import { loadVisualQualityMode, saveVisualQualityMode, type VisualQuality, type VisualQualityMode } from '../game/VisualQualitySettings';
-
-interface PerformanceDetail {
-  mode: VisualQualityMode;
-  quality: VisualQuality;
-  fps: number;
-}
 
 export class GraphicsSettingsController {
   private mode = loadVisualQualityMode();
   private readonly panel: HTMLElement;
   private readonly status: HTMLElement;
 
-  constructor() {
+  constructor(game: Phaser.Game) {
     const topbar = document.querySelector<HTMLElement>('.topbar');
     const hud = document.getElementById('hud');
     if (!topbar || !hud) throw new Error('Graphics settings host elements missing');
@@ -56,12 +51,13 @@ export class GraphicsSettingsController {
       this.setMode(mode);
     }));
 
-    window.addEventListener('dorbot:performance', (event) => {
-      const detail = (event as CustomEvent<PerformanceDetail>).detail;
-      if (!detail) return;
-      this.status.textContent = `Modus ${detail.mode.toUpperCase()} · aktiv ${detail.quality.toUpperCase()} · ~${Math.round(detail.fps)} FPS`;
-      this.refreshButtons(detail.mode);
-    });
+    window.setInterval(() => {
+      this.mode = loadVisualQualityMode();
+      const quality = (game.registry.get('visualQuality') ?? 'high') as VisualQuality;
+      const fps = Number(game.registry.get('estimatedFps') ?? 60);
+      this.status.textContent = `Modus ${this.mode.toUpperCase()} · aktiv ${quality.toUpperCase()} · ~${Math.round(fps)} FPS`;
+      this.refreshButtons(this.mode);
+    }, 500);
 
     this.refreshButtons(this.mode);
   }
@@ -70,7 +66,6 @@ export class GraphicsSettingsController {
     this.mode = mode;
     saveVisualQualityMode(mode);
     this.refreshButtons(mode);
-    window.dispatchEvent(new CustomEvent('dorbot:quality-mode', { detail: { mode } }));
   }
 
   private refreshButtons(mode: VisualQualityMode): void {
