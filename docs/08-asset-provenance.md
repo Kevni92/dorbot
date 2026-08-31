@@ -28,8 +28,16 @@ Pinning the commit prevents upstream changes from silently changing the prototyp
 
 | Dorbot semantic key | Kenney atlas frame | Purpose |
 | --- | --- | --- |
-| `ship-player` | `playerShip1_blue.png` | Player ship |
-| `ship-pirate` | `enemyRed2.png` | Pirate / hostile ship |
+| `ship-player` | `playerShip1_blue.png` | Starter ship |
+| `ship-scout` | `playerShip3_blue.png` | Scout class |
+| `ship-hunter` | `playerShip2_blue.png` | Hunter class |
+| `ship-hauler` | `playerShip2_green.png` | Hauler class |
+| `ship-pirate` | `enemyRed2.png` | Generic hostile fallback |
+| `ship-pirate-1` | `enemyRed1.png` | Pirate variant 1 |
+| `ship-pirate-2` | `enemyRed2.png` | Pirate variant 2 |
+| `ship-pirate-3` | `enemyRed3.png` | Pirate variant 3 |
+| `ship-pirate-4` | `enemyBlack4.png` | Pirate variant 4 |
+| `ship-pirate-5` | `enemyRed5.png` | Pirate variant 5 |
 | `asteroid` | `meteorBrown_big1.png` | Mineable asteroid |
 | `ore` | `meteorGrey_small1.png` | Broken-off resource chunk |
 | `cargo` | `powerupYellow.png` | Recoverable cargo pickup |
@@ -40,7 +48,7 @@ The remaining semantic textures (`station`, `rocket`, star layers) remain proced
 
 `AssetPreloadScene` attempts to load the real CC0 atlas before the game scene starts. Successfully imported frames are copied into Dorbot's stable semantic texture keys. `createProceduralAssets` only generates a texture when that semantic key does not already exist.
 
-Therefore gameplay code remains independent of art pack names and the game remains playable if the remote asset source cannot be loaded.
+Every class/hostile variant also has a procedural fallback. Therefore buying another ship or spawning pirates cannot create missing textures if the remote atlas is unavailable.
 
 ## Vendoring note
 
@@ -48,8 +56,7 @@ An attempt was made to reference the public mirror's existing Git blob directly 
 
 ## Next asset passes
 
-1. Replace the station placeholder with a prerendered/composed Kenney Space Station/Space Kit asset.
+1. Replace the station placeholder with a prerendered/composed approved Space Station/Space Kit asset.
 2. Add a local CC0 deep-space background and decorative parallax layer.
 3. Replace the rocket placeholder with approved projectile art.
-4. Add multiple hostile ship frames for pirate visual variety.
-5. Vendor final production-critical assets into the repository after the selected source files are individually catalogued and size-optimized.
+4. Vendor final production-critical assets into the repository after the selected source files are individually catalogued and size-optimized.

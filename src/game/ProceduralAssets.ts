@@ -1,6 +1,14 @@
 export function createProceduralAssets(scene: any): void {
   if (!scene.textures.exists('ship-player')) makeShip(scene, 'ship-player', 0x61e7ff, 0xffffff);
+  if (!scene.textures.exists('ship-scout')) makeShip(scene, 'ship-scout', 0x76f4ff, 0xffffff);
+  if (!scene.textures.exists('ship-hunter')) makeShip(scene, 'ship-hunter', 0x4f9cff, 0xddeaff);
+  if (!scene.textures.exists('ship-hauler')) makeShip(scene, 'ship-hauler', 0x63ffc2, 0xe8fff6);
   if (!scene.textures.exists('ship-pirate')) makeShip(scene, 'ship-pirate', 0xff4f70, 0xffb0bd);
+  const pirateColors = [0xff5d70, 0xf44464, 0xff8065, 0xc44d70, 0xff365f];
+  pirateColors.forEach((color, index) => {
+    const key = `ship-pirate-${index + 1}`;
+    if (!scene.textures.exists(key)) makeShip(scene, key, color, 0xffc0ca);
+  });
 
   if (!scene.textures.exists('asteroid')) {
     const asteroid = scene.make.graphics({ x: 0, y: 0, add: false });
